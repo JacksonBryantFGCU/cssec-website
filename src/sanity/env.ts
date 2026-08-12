@@ -1,20 +1,13 @@
-export const apiVersion =
-  process.env.NEXT_PUBLIC_SANITY_API_VERSION || '2026-08-12'
+import { publicEnv } from '../lib/env/public'
 
-export const dataset = assertValue(
-  process.env.NEXT_PUBLIC_SANITY_DATASET,
-  'Missing environment variable: NEXT_PUBLIC_SANITY_DATASET'
-)
-
-export const projectId = assertValue(
-  process.env.NEXT_PUBLIC_SANITY_PROJECT_ID,
-  'Missing environment variable: NEXT_PUBLIC_SANITY_PROJECT_ID'
-)
-
-function assertValue<T>(v: T | undefined, errorMessage: string): T {
-  if (v === undefined) {
-    throw new Error(errorMessage)
-  }
-
-  return v
-}
+/**
+ * Browser-safe Sanity configuration. These are re-exported from the validated
+ * public env module so the Studio config, the read client and the image builder
+ * all read from one source.
+ *
+ * Imported with a relative path (not `@/`) because `sanity.config.ts` is
+ * bundled by the Sanity CLI as well as by Next.js.
+ */
+export const projectId = publicEnv.NEXT_PUBLIC_SANITY_PROJECT_ID
+export const dataset = publicEnv.NEXT_PUBLIC_SANITY_DATASET
+export const apiVersion = publicEnv.NEXT_PUBLIC_SANITY_API_VERSION
