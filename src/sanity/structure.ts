@@ -2,8 +2,10 @@ import { BookIcon } from '@sanity/icons/Book'
 import { CalendarIcon } from '@sanity/icons/Calendar'
 import { CaseIcon } from '@sanity/icons/Case'
 import { CogIcon } from '@sanity/icons/Cog'
+import { PlugIcon } from '@sanity/icons/Plug'
 import { RocketIcon } from '@sanity/icons/Rocket'
 import { UsersIcon } from '@sanity/icons/Users'
+import type { ComponentType } from 'react'
 import type { StructureBuilder, StructureResolver } from 'sanity/structure'
 
 import { SINGLETON_TYPES } from './schemaTypes'
@@ -28,11 +30,16 @@ const PLACED_TYPES: string[] = [
 ]
 
 /** Locks a document type to a single fixed document id. */
-function singleton(S: StructureBuilder, type: string, title: string) {
+function singleton(
+  S: StructureBuilder,
+  type: string,
+  title: string,
+  icon: ComponentType = CogIcon,
+) {
   return S.listItem()
     .id(type)
     .title(title)
-    .icon(CogIcon)
+    .icon(icon)
     .child(S.document().schemaType(type).documentId(type).title(title))
 }
 
@@ -198,6 +205,9 @@ export const structure: StructureResolver = (S) =>
       S.listItem().title('Resources').icon(BookIcon).child(resourceList(S)),
       S.listItem().title('Opportunities').icon(CaseIcon).child(opportunityList(S)),
       S.listItem().title('People').icon(UsersIcon).child(peopleList(S)),
+      S.divider(),
+      // Diagnostic, not content: written by the /admin write check.
+      singleton(S, 'adminWriteCheck', 'Admin write check (diagnostic)', PlugIcon),
       S.divider(),
       // Anything added to the schema later still shows up, minus what is
       // already placed above.

@@ -37,10 +37,10 @@ const checks = {
     required: true,
     validate: isApiDate,
   },
-  // Required once Clerk sign-in is wired up in the authentication phase.
+  // Clerk is wired up: officer sign-in cannot work without this.
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: {
     value: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-    required: false,
+    required: true,
   },
 } satisfies Record<string, Check>
 
@@ -69,7 +69,7 @@ function parsePublicEnv() {
     NEXT_PUBLIC_SANITY_PROJECT_ID: checks.NEXT_PUBLIC_SANITY_PROJECT_ID.value!,
     NEXT_PUBLIC_SANITY_DATASET: checks.NEXT_PUBLIC_SANITY_DATASET.value!,
     NEXT_PUBLIC_SANITY_API_VERSION: checks.NEXT_PUBLIC_SANITY_API_VERSION.value!,
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: checks.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.value,
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: checks.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.value!,
   }
 }
 

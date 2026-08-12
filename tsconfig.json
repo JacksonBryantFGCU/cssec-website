@@ -10,6 +10,9 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
+    // `src/auth/*` uses explicit .ts specifiers so Node's built-in test runner
+    // can execute the authorization tests without a bundler or test stack.
+    "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,

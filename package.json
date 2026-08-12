@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "typegen": "sanity schemas extract --force && sanity typegen generate",
-    "validate": "pnpm run typegen && pnpm run lint && pnpm run typecheck && pnpm run build"
+    "test": "node --test \"src/**/*.test.ts\"",
+    "validate": "pnpm run typegen && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build"
   },
   "engines": {
     "node": ">=24 <25"

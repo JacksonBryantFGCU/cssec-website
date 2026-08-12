@@ -66,6 +66,17 @@ export type Seo = {
   };
 };
 
+export type AdminWriteCheck = {
+  _id: string;
+  _type: "adminWriteCheck";
+  _createdAt: string;
+  _updatedAt: string;
+  _rev: string;
+  lastCheckedAt?: string;
+  lastCheckedBy?: string;
+  note?: string;
+};
+
 export type PersonReference = {
   _ref: string;
   _type: "reference";
@@ -501,6 +512,7 @@ export type AllSanitySchemaTypes =
   | SocialLink
   | SanityImageAssetReference
   | Seo
+  | AdminWriteCheck
   | PersonReference
   | OfficerRole
   | Opportunity
@@ -523,6 +535,22 @@ export type AllSanitySchemaTypes =
   | SanityAssetSourceData
   | SanityImageAsset
   | Geopoint;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_WRITE_CHECK_QUERY
+// Query: *[_id == "adminWriteCheck"][0]{    note,    lastCheckedAt,    lastCheckedBy  }
+export type ADMIN_WRITE_CHECK_QUERY_RESULT =
+  | {
+      note: null;
+      lastCheckedAt: null;
+      lastCheckedBy: null;
+    }
+  | {
+      note: string | null;
+      lastCheckedAt: string | null;
+      lastCheckedBy: string | null;
+    }
+  | null;
 
 // Source: src/sanity/queries/events.ts
 // Variable: UPCOMING_EVENTS_QUERY
@@ -1398,6 +1426,7 @@ export type SITE_SETTINGS_QUERY_RESULT =
 import "@sanity/client";
 declare module "@sanity/client" {
   interface SanityQueries {
+    '\n  *[_id == "adminWriteCheck"][0]{\n    note,\n    lastCheckedAt,\n    lastCheckedBy\n  }\n': ADMIN_WRITE_CHECK_QUERY_RESULT;
     '\n  *[_type == "event" && status != "cancelled" && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())]\n    | order(startsAt asc){\n      \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n      presenters[]->{ _id, name }\n    }\n': UPCOMING_EVENTS_QUERY_RESULT;
     '\n  *[_type == "event" && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]\n    | order(startsAt desc){\n      \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n      presenters[]->{ _id, name }\n    }\n': PAST_EVENTS_QUERY_RESULT;
     '\n  *[_type == "event" && slug.current == $slug][0]{\n    \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n    description,\n    prerequisites,\n    setupInstructions,\n    topics,\n    registrationUrl,\n    communityUrl,\n    recap,\n    presenters[]->{ \n  _id,\n  name,\n  "slug": slug.current,\n  photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  shortBio,\n  githubUrl,\n  linkedinUrl,\n  websiteUrl\n },\n    // Materials created for this event, plus anything explicitly highlighted.\n    "resources": array::unique([\n      ...*[_type == "resource" && event._ref == ^._id]{ \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n },\n      ...relatedResources[]->{ \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n }\n    ]),\n    seo { \n  metaTitle,\n  metaDescription,\n  shareImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n }\n  }\n': EVENT_BY_SLUG_QUERY_RESULT;

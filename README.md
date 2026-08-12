@@ -7,16 +7,17 @@ It serves three audiences from one codebase:
 | Surface | Path | Who it is for | Status |
 | --- | --- | --- | --- |
 | Public site | `/`, `/events`, `/projects`, `/resources`, `/opportunities`, … | Students | Planned |
-| Officer admin | `/admin` | Club officers, day to day | Planned (auth phase next) |
+| Officer admin | `/admin` | Club officers, day to day | Protected shell (no CRUD yet) |
+| Officer sign-in | `/sign-in` | Club officers | Live |
 | Sanity Studio | `/studio` | Advanced content management / fallback editor | Live |
 
 ## Architecture
 
 - **Sanity** is the single source of truth for all website content.
-- **Clerk** will handle officer identity and authentication.
-- **Next.js** renders both the public site and the future custom admin.
+- **Clerk** handles officer identity and authentication for `/admin`.
+- **Next.js** renders both the public site and the custom admin.
 - **`/studio`** is the full Sanity Studio — the advanced CMS and the fallback for anything the custom admin does not cover.
-- **`/admin`** will become the simplified officer workflow (a small, guided UI over server-side Sanity mutations). It does not exist yet.
+- **`/admin`** will become the simplified officer workflow (a small, guided UI over server-side Sanity mutations). Only the protected shell exists today.
 
 There is no separate database. Content lives in the Sanity Content Lake; identity lives in Clerk.
 
@@ -46,13 +47,15 @@ Copy `.env.example` to `.env.local` and fill it in. Never commit `.env.local`.
 | `NEXT_PUBLIC_SANITY_PROJECT_ID` | public | Sanity project |
 | `NEXT_PUBLIC_SANITY_DATASET` | public | Sanity dataset (`production`) |
 | `NEXT_PUBLIC_SANITY_API_VERSION` | public | Sanity API date, `YYYY-MM-DD` |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | public | Clerk (required from the auth phase on) |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | public | Clerk browser SDK (**required**) |
 | `SANITY_API_WRITE_TOKEN` | **server only** | Sanity mutations from `/admin` |
 | `CLERK_SECRET_KEY` | **server only** | Clerk server SDK |
 
-Environment access is centralised and validated with Zod:
+No Clerk redirect environment variables are needed — sign-in redirects are set on the `<SignIn />` component and via `requireOfficer()`.
 
-- `src/lib/env/public.ts` — browser-safe values (`publicEnv`).
+Environment access is centralised and validated:
+
+- `src/lib/env/public.ts` — browser-safe values (`publicEnv`). Deliberately dependency-free: it is reachable from `sanity.config.ts`, which is a Client Component, so importing Zod here would ship Zod (and every one of its locale files) to the browser.
 - `src/lib/env/server.ts` — secrets (`serverEnv`, `requireEnv`). Imports `server-only`, so importing it from a Client Component is a build error.
 
 Do not read `process.env` directly elsewhere.
@@ -83,6 +86,7 @@ src/sanity/
 | `resource` | First-class learning material: slides, recordings, guides, cheat sheets, repos |
 | `project` | Club projects, their lifecycle, open roles and learning outcomes |
 | `opportunity` | Curated student opportunity board |
+| `adminWriteCheck` | **Diagnostic, not content.** Written by the `/admin` write check to prove the secure mutation path. Safe to delete; the action recreates it |
 
 Objects: `seo`, `socialLink`, `eventLocation`, `openRole`.
 
@@ -109,12 +113,88 @@ pnpm typegen   # sanity schemas extract --force && sanity typegen generate
 | `pnpm lint` | ESLint |
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm typegen` | Sanity schema extraction + type generation |
-| `pnpm validate` | typegen → lint → typecheck → build |
+| `pnpm test` | Authorization tests (Node's built-in runner — no test stack installed) |
+| `pnpm validate` | typegen → lint → typecheck → test → build |
 
-## Authentication (next phase)
+## Authentication and officer access
 
-Clerk is installed and its environment variables are in place, but no sign-in flow or protected route exists yet. The next phase adds Clerk middleware, officer authorization and the `/admin` foundation. Server-side mutations will go through `getWriteClient()` from `src/sanity/lib/write-client.ts` inside authenticated Server Actions — the write token must never reach the browser.
+**Two separate authentication systems, on purpose:**
+
+| Surface | Authenticates with | Who gets in |
+| --- | --- | --- |
+| `/admin` | **Clerk** | Accounts with a CSSEC role in Clerk |
+| `/studio` | **Sanity's own login** | Users invited to the Sanity project |
+
+Both ultimately manage the same Sanity content. `/studio` is never wrapped in Clerk authorization, and the Clerk proxy matcher explicitly skips it.
+
+### Roles
+
+Two roles, stored in Clerk as `publicMetadata.role` on the user — no database, no Clerk Organizations (CSSEC is one club, not a multi-tenant product).
+
+| Role | Can |
+| --- | --- |
+| `officer` | Access `/admin`, manage content (`admin:access`, `content:write`) |
+| `admin` | Everything an officer can, plus managing other officers (`officers:manage`) |
+
+Roles and capabilities are defined once in `src/auth/roles.ts` and `src/auth/permissions.ts`. Never compare role strings inline — use `can(role, capability)`.
+
+### Granting officer access
+
+> **First time?** The Clerk instance starts with no users. Create the first account in **Clerk dashboard → Users → Create user**, then give it `{"role": "admin"}` as described below. There is no public sign-up route by design.
+
+1. In the **Clerk dashboard → Users**, invite the incoming officer by email (Clerk sends the invitation; there is no public sign-up route, and sign-up should stay restricted in **User & Authentication → Restrictions**).
+2. Open the user → **Metadata → Public metadata** → set:
+   ```json
+   { "role": "officer" }
+   ```
+   Use `"admin"` for a president or webmaster who should also manage officers.
+3. The officer signs in at `/sign-in` and lands on `/admin`.
+
+### Revoking officer access
+
+Remove the `role` key from the user's public metadata, or delete/ban the user in Clerk. Access is checked server-side on every request, so the change takes effect on their next request — **no code change and no deploy**. Officer emails are never hard-coded.
+
+### Optional: role in the session token
+
+By default `requireOfficer()` reads the role from the session claim when present and otherwise falls back to a Clerk Backend API lookup, which costs one request. To avoid that lookup, add a custom claim in **Clerk dashboard → Sessions → Customize session token**:
+
+```json
+{ "metadata": "{{user.public_metadata}}" }
+```
+
+The typed shape of that claim lives in `src/auth/roles.ts`. Nothing breaks if it is not configured — authorization is identical either way, and a stale claim can never grant more than the Backend API does because a missing/invalid role always falls through to the lookup.
+
+### How protection works
+
+- `src/proxy.ts` (Next.js 16 renamed `middleware.ts` → `proxy.ts`) runs `clerkMiddleware()` to establish Clerk request context. **It protects nothing on its own** — a matcher mistake therefore cannot expose admin content.
+- `requireOfficer()` in `src/auth/require-officer.ts` is the real boundary. It is `server-only`, runs before any protected UI renders, and is called by **each** protected page **and independently inside every Server Action** — an action is its own entry point reachable by direct POST, so a page check does not cover it.
+- Signed out → redirected to `/sign-in` (returning to the intended destination). Signed in without a role → `/admin/no-access`, which explains nothing about the authorization internals.
+- Client components and Clerk hooks are used only for UX (sign-out control, Clerk's sign-in UI). They never make authorization decisions.
+
+### Sanity write security
+
+Mutations go through one path only: Server Action → `requireOfficer()` → Zod validation → `getWriteClient()` (`src/sanity/lib/write-client.ts`, guarded by `server-only`) → Content Lake. `SANITY_API_WRITE_TOKEN` is read only there, is never logged, and cannot appear in a browser bundle. `/admin` demonstrates this with a write check that updates the `adminWriteCheck` diagnostic document.
+
+### Local development
+
+Use Clerk **development instance** keys in `.env.local`, and give your own Clerk user `{"role": "admin"}` public metadata so `/admin` is reachable. `pnpm dev` needs no other auth setup.
+
+To verify the whole chain by hand:
+
+| Step | Expected |
+| --- | --- |
+| Visit `/` signed out | Loads normally |
+| Visit `/studio` signed out | Sanity's own login — never Clerk |
+| Visit `/admin` signed out | Redirects to `/sign-in?redirect_url=%2Fadmin`, no admin content in the response |
+| Sign in as a user with **no** `role` metadata | Lands on `/admin/no-access`; `/admin` stays inaccessible |
+| Add `{"role": "officer"}`, sign in again | `/admin` renders with your name and role |
+| Press **Run write check** | Success message; the timestamp also appears in Studio under *Admin write check (diagnostic)* |
+| Clear the `role`, reload `/admin` | Back to `/admin/no-access` — no deploy needed |
 
 ## Project status
 
-Foundation phase: production architecture, environment validation, server-only boundaries, the Sanity content model, Studio structure, TypeGen and the GROQ query layer. The public UI, the officer admin and authentication are not built yet.
+Phase 1 — foundation: architecture, environment validation, server-only boundaries, the Sanity content model, Studio structure, TypeGen and the GROQ query layer.
+
+Phase 2 — officer authentication: Clerk wiring, `/sign-in`, role-based authorization, the protected `/admin` shell, and one end-to-end Sanity write proof.
+
+Not built yet: the public UI (events, projects, resources, opportunities pages), admin CRUD, and the admin navigation shell.
