@@ -1,6 +1,12 @@
 import Link from 'next/link'
 
-import { EXPERIENCE_LEVELS, PROJECT_STATUSES, titleForValue } from '@/sanity/schemaTypes/shared/options'
+import {
+  isBeginnerFriendly,
+  openRolesLabel,
+  projectLevelLabel,
+  projectStatusLabel,
+  rolesSummary,
+} from '@/lib/projects/view-model'
 
 import { siteButton } from './button'
 import { StatusBadge, LevelBadge, TechTag } from './primitives'
@@ -30,20 +36,6 @@ export type ProjectPreviewData = {
   mentors?: Array<{ _id: string; name?: string | null }> | null
 }
 
-function levelLabel(project: ProjectPreviewData): string {
-  if (project.noExperienceRequired) return 'No experience required'
-  return titleForValue(EXPERIENCE_LEVELS, project.experienceLevel) ?? 'Any experience level'
-}
-
-function rolesSummary(project: ProjectPreviewData): string {
-  const titles = (project.openRoles ?? [])
-    .map((role) => role.title?.trim())
-    .filter((title): title is string => Boolean(title))
-
-  if (titles.length > 0) return titles.join(' · ')
-  return project.openRoleCount ? `${project.openRoleCount} open` : 'No open roles right now'
-}
-
 export function ProjectPreview({ project }: { project: ProjectPreviewData }) {
   const status = project.status ?? 'idea'
   const openRoles = project.openRoleCount ?? project.openRoles?.length ?? 0
@@ -62,13 +54,10 @@ export function ProjectPreview({ project }: { project: ProjectPreviewData }) {
                 {project.name}
               </Link>
             </h3>
-            <StatusBadge
-              label={titleForValue(PROJECT_STATUSES, status) ?? status}
-              status={status}
-            />
+            <StatusBadge label={projectStatusLabel(status)} status={status} />
             <LevelBadge
-              label={levelLabel(project)}
-              tone={project.noExperienceRequired ? 'beginner' : 'experienced'}
+              label={projectLevelLabel(project)}
+              tone={isBeginnerFriendly(project) ? 'beginner' : 'experienced'}
             />
           </div>
 
@@ -103,11 +92,11 @@ export function ProjectPreview({ project }: { project: ProjectPreviewData }) {
         <div className="border-rule flex flex-col gap-3 border-t pt-4 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-[26px]">
           <div>
             <p className="text-ink-label mb-1 font-mono text-[10px] tracking-[0.14em]">
-              {openRoles > 0
-                ? `${openRoles} OPEN ${openRoles > 1 ? 'ROLES' : 'ROLE'}`
-                : 'NO OPEN ROLES'}
+              {openRolesLabel(openRoles)}
             </p>
-            <p className="text-ink-strong text-[13.5px] leading-snug">{rolesSummary(project)}</p>
+            <p className="text-ink-strong text-[13.5px] leading-snug">
+              {rolesSummary(project.openRoles, project.openRoleCount) ?? 'No open roles right now'}
+            </p>
           </div>
 
           {project.lead?.name || mentorNames.length ? (

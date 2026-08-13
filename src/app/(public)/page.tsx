@@ -148,7 +148,7 @@ export default async function HomePage() {
         )}
       </section>
 
-      {/* 4 — the workshop archive. */}
+      {/* 4 — the workshop archive. Links into the library that now exists. */}
       <section className="border-rule bg-paper border-b px-4 py-8 sm:px-7 sm:py-[36px_32px]">
         <SectionHeader
           action={<SectionLink href="/resources">Resource library →</SectionLink>}

@@ -2,11 +2,18 @@ import { defineQuery } from 'next-sanity'
 
 import { personFragment, resourceCardFragment } from './fragments'
 
-/** The resource library listing. */
+/**
+ * The resource library listing.
+ *
+ * The source event is projected with it because the archive's whole premise is
+ * that material stays attached to the session that produced it — the row shows
+ * "From: Git & GitHub, September 18" and links there.
+ */
 export const RESOURCES_QUERY = defineQuery(/* groq */ `
-  *[_type == "resource"] | order(featured desc, publishedAt desc){
+  *[_type == "resource"] | order(featured desc, coalesce(publishedAt, _createdAt) desc){
     ${resourceCardFragment},
-    event->{ _id, title, "slug": slug.current }
+    author->{ _id, name },
+    event->{ _id, title, "slug": slug.current, startsAt }
   }
 `)
 
