@@ -33,8 +33,6 @@ export type AdminNavItem = {
   icon: AdminNavIcon
   /** Required to see the link at all. Defaults to `admin:access`. */
   capability?: Capability
-  /** Marks a module whose management screens land in a later phase. */
-  comingSoon?: boolean
   /** Leaves the admin app (opens the Studio). */
   external?: boolean
 }
@@ -53,39 +51,31 @@ export const ADMIN_NAV: AdminNavSection[] = [
     title: 'Content',
     items: [
       { href: '/admin/events', label: 'Events', icon: 'events', capability: 'content:write' },
-      {
-        href: '/admin/projects',
-        label: 'Projects',
-        icon: 'projects',
-        capability: 'content:write',
-        comingSoon: true,
-      },
+      { href: '/admin/projects', label: 'Projects', icon: 'projects', capability: 'content:write' },
       {
         href: '/admin/resources',
         label: 'Resources',
         icon: 'resources',
         capability: 'content:write',
-        comingSoon: true,
       },
       {
         href: '/admin/opportunities',
         label: 'Opportunities',
         icon: 'opportunities',
         capability: 'content:write',
-        comingSoon: true,
       },
     ],
   },
   {
     title: 'Club',
     items: [
-      { href: '/admin/people', label: 'People', icon: 'people', capability: 'content:write', comingSoon: true },
+      { href: '/admin/people', label: 'People', icon: 'people', capability: 'content:write' },
+      // Global content: one save changes every page, so it is admin-only.
       {
         href: '/admin/settings',
         label: 'Site settings',
         icon: 'settings',
-        capability: 'content:write',
-        comingSoon: true,
+        capability: 'settings:manage',
       },
     ],
   },

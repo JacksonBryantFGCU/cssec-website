@@ -1,3 +1,7 @@
+import Link from 'next/link'
+
+import { Button, buttonVariants } from '@/components/ui/button'
+import { acceptAttribute, rulesFor, type UploadKind } from '@/lib/admin/assets'
 import { cn } from '@/lib/utils'
 
 /**
@@ -161,5 +165,173 @@ export function FieldSet({
       ) : null}
       {children}
     </fieldset>
+  )
+}
+
+/**
+ * The banner a rejected save puts above the form.
+ *
+ * `role="alert"` so the reason is announced rather than only appearing; the
+ * per-field messages under each control say *where*, this says *what*.
+ */
+export function FormAlert({ message }: { message?: string }) {
+  if (!message) return null
+
+  return (
+    <p
+      className="border-destructive/30 bg-destructive/5 text-destructive flex items-start gap-2 rounded-md border px-4 py-3 text-[13.5px] font-semibold"
+      role="alert"
+    >
+      <span aria-hidden="true">✕</span>
+      {message}
+    </p>
+  )
+}
+
+/**
+ * The submit / cancel row every admin form ends with.
+ *
+ * One component so the primary action is always first, cancel is always a link
+ * (never a button that could be mistaken for a submit), and the pending label
+ * is consistent across six forms.
+ */
+export function FormFooter({
+  cancelHref,
+  isPending,
+  note,
+  submitLabel,
+}: {
+  cancelHref: string
+  isPending: boolean
+  /** Optional aside on the right, e.g. the timezone reminder. */
+  note?: React.ReactNode
+  submitLabel: string
+}) {
+  return (
+    <div className="border-rule-card flex flex-wrap items-center gap-3 border-t pt-4">
+      <Button disabled={isPending} type="submit">
+        {isPending ? 'Saving…' : submitLabel}
+      </Button>
+      <Link className={cn(buttonVariants({ variant: 'ghost' }))} href={cancelHref}>
+        Cancel
+      </Link>
+      {note ? <span className="text-ink-faint ml-auto font-mono text-[11px]">{note}</span> : null}
+    </div>
+  )
+}
+
+/**
+ * Points at the Studio for the fields this form deliberately does not manage.
+ *
+ * Used once per form, at the end — a Studio link beside every control would
+ * suggest the admin is a lesser copy of Studio rather than the place routine
+ * work happens.
+ */
+export function StudioNote({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-ink-faint text-[12px] leading-relaxed">
+      {children}{' '}
+      <Link
+        className="text-club-link font-medium underline underline-offset-4"
+        href="/studio"
+        rel="noreferrer"
+        target="_blank"
+      >
+        Advanced CMS
+      </Link>
+      . Saving here leaves them untouched.
+    </p>
+  )
+}
+
+/**
+ * A file input paired with what is already stored.
+ *
+ * Uploading is additive by default — choosing nothing keeps the current file —
+ * so replacing and removing are two separate, explicitly labelled choices. That
+ * matters because an admin form that silently dropped an asset on every save
+ * would quietly destroy content the officer never touched.
+ *
+ * The `accept` list and the size sentence come from the same rules the Server
+ * Action enforces, so the picker and the validation can never disagree.
+ */
+export function FileField({
+  current,
+  description,
+  error,
+  htmlFor,
+  kind,
+  label,
+  removeName,
+}: {
+  /** What is stored today: a label and, where there is one, a link to it. */
+  current?: { label: string; href?: string } | null
+  description?: string
+  error?: string
+  htmlFor: string
+  kind: UploadKind
+  label: string
+  /** Name of the "remove the existing file" checkbox. */
+  removeName?: string
+}) {
+  const rules = rulesFor(kind)
+  const help = [description, `Up to ${rules.maxLabel}. ${rules.extensions.join(', ')}.`]
+    .filter(Boolean)
+    .join(' ')
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-ink text-[13px] font-semibold" htmlFor={htmlFor}>
+        {label}
+      </label>
+      <p className="text-ink-faint text-[12px] leading-snug" id={`${htmlFor}-description`}>
+        {help}
+      </p>
+
+      {current ? (
+        <p className="border-rule bg-paper-warm text-ink-body flex flex-wrap items-center gap-2 rounded-md border px-3 py-2 text-[12.5px]">
+          <span className="text-ink-label font-mono text-[10.5px] tracking-[0.12em] uppercase">
+            Current
+          </span>
+          {current.href ? (
+            <a
+              className="text-club-link font-medium underline underline-offset-4"
+              href={current.href}
+              rel="noreferrer"
+              target="_blank"
+            >
+              {current.label}
+              <span aria-hidden="true"> ↗</span>
+            </a>
+          ) : (
+            <span>{current.label}</span>
+          )}
+        </p>
+      ) : null}
+
+      <input
+        accept={acceptAttribute(rules)}
+        aria-describedby={`${htmlFor}-description${error ? ` ${htmlFor}-error` : ''}`}
+        aria-invalid={error ? true : undefined}
+        className="text-ink file:border-input file:text-ink hover:file:bg-rule-fill min-h-11 w-full rounded-md border border-dashed border-input bg-background px-3 py-2 text-sm file:mr-3 file:min-h-8 file:rounded-md file:border file:bg-white file:px-3 file:text-[13px] file:font-semibold"
+        id={htmlFor}
+        name={htmlFor}
+        type="file"
+      />
+
+      {current && removeName ? (
+        <label className="text-ink-soft flex min-h-11 items-center gap-2.5 text-[12.5px]">
+          <input
+            className="accent-destructive size-[18px]"
+            name={removeName}
+            type="checkbox"
+            value="on"
+          />
+          Remove the current {kind === 'image' ? 'image' : 'file'} when saving
+        </label>
+      ) : null}
+
+      <FieldError error={error} id={`${htmlFor}-error`} />
+    </div>
   )
 }

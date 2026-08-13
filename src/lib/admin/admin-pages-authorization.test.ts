@@ -19,6 +19,15 @@ import { test } from 'node:test'
 
 const SHELL_DIR = fileURLToPath(new URL('../../app/admin/(shell)/', import.meta.url))
 
+/** Screens whose capability is stronger than the default `content:write`. */
+const ADMIN_ONLY_PAGES: Record<string, string> = {
+  'settings/page.tsx': 'settings:manage',
+  'people/officers/page.tsx': 'officers:manage',
+  'people/officers/new/page.tsx': 'officers:manage',
+  'people/officers/[id]/edit/page.tsx': 'officers:manage',
+  'people/officers/[id]/remove/page.tsx': 'officers:manage',
+}
+
 function pageFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
     const full = path.join(dir, entry)
@@ -30,7 +39,7 @@ function pageFiles(dir: string): string[] {
 const pages = pageFiles(SHELL_DIR)
 
 test('every admin page authorizes the caller itself', () => {
-  assert.ok(pages.length >= 7, `expected to find the admin pages, found ${pages.length}`)
+  assert.ok(pages.length >= 24, `expected to find the admin pages, found ${pages.length}`)
 
   for (const file of pages) {
     const source = readFileSync(file, 'utf8')
@@ -58,6 +67,22 @@ test('authorization runs before the page reads from Sanity', () => {
         `${relative} queries Sanity before authorizing the caller`,
       )
     }
+  }
+})
+
+test('a page is gated at least as strongly as the action it leads to', () => {
+  for (const file of pages) {
+    const relative = path.relative(SHELL_DIR, file).replace(/\\/g, '/')
+    const expected = ADMIN_ONLY_PAGES[relative]
+    if (!expected) continue
+
+    // Otherwise an officer would reach a form whose Save button always fails —
+    // or worse, a reviewer would assume the page check was the real one.
+    assert.match(
+      readFileSync(file, 'utf8'),
+      new RegExp(`capability: '${expected}'`),
+      `${relative} must require the ${expected} capability`,
+    )
   }
 })
 

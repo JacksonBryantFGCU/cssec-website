@@ -656,6 +656,365 @@ export type ADMIN_PEOPLE_OPTIONS_QUERY_RESULT = Array<{
   name: string | null;
 }>;
 
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_PROJECTS_QUERY
+// Query: *[_type == "project"] | order(    select(      status == "recruiting" => 0,      status == "active" => 1,      status == "testing" => 2,      status == "idea" => 3,      status == "shipped" => 4,      5    ) asc,    featured desc,    coalesce(startedAt, _createdAt) desc  ){    _id,    name,    "slug": slug.current,    status,    experienceLevel,    noExperienceRequired,    featured,    techStack,    // count() on a missing array is null, so coalesce for a plain number.    "openRoleCount": coalesce(count(openRoles), 0),    "mentorCount": coalesce(count(mentors), 0),    "leadName": lead->name,    startedAt,    completedAt  }
+export type ADMIN_PROJECTS_QUERY_RESULT = Array<{
+  _id: string;
+  name: string | null;
+  slug: string | null;
+  status:
+    | "active"
+    | "archived"
+    | "idea"
+    | "recruiting"
+    | "shipped"
+    | "testing"
+    | null;
+  experienceLevel: "advanced" | "any" | "beginner" | "intermediate" | null;
+  noExperienceRequired: boolean | null;
+  featured: boolean | null;
+  techStack: Array<string> | null;
+  openRoleCount: number | 0;
+  mentorCount: number | 0;
+  leadName: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+}>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_PROJECT_BY_ID_QUERY
+// Query: *[_type == "project" && _id == $id][0]{    _id,    name,    "slug": slug.current,    status,    shortDescription,    experienceLevel,    noExperienceRequired,    techStack,    learningOutcomes,    "leadId": lead._ref,    "mentorIds": mentors[]._ref,    "contributorIds": contributors[]._ref,    openRoles[]{ _key, title, description, experienceLevel, learningOutcome },    githubUrl,    demoUrl,    discussionUrl,    currentFocus,    latestMilestone,    startedAt,    completedAt,    featured,    "coverImageAlt": coverImage.alt,    "coverImageUrl": coverImage.asset->url,    "screenshotCount": coalesce(count(screenshots), 0),    "referenceCount": count(*[references(^._id)])  }
+export type ADMIN_PROJECT_BY_ID_QUERY_RESULT = {
+  _id: string;
+  name: string | null;
+  slug: string | null;
+  status:
+    | "active"
+    | "archived"
+    | "idea"
+    | "recruiting"
+    | "shipped"
+    | "testing"
+    | null;
+  shortDescription: string | null;
+  experienceLevel: "advanced" | "any" | "beginner" | "intermediate" | null;
+  noExperienceRequired: boolean | null;
+  techStack: Array<string> | null;
+  learningOutcomes: Array<string> | null;
+  leadId: string | null;
+  mentorIds: Array<string> | null;
+  contributorIds: Array<string> | null;
+  openRoles: Array<{
+    _key: string;
+    title: string | null;
+    description: string | null;
+    experienceLevel: "advanced" | "any" | "beginner" | "intermediate" | null;
+    learningOutcome: string | null;
+  }> | null;
+  githubUrl: string | null;
+  demoUrl: string | null;
+  discussionUrl: string | null;
+  currentFocus: string | null;
+  latestMilestone: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  featured: boolean | null;
+  coverImageAlt: string | null;
+  coverImageUrl: string | null;
+  screenshotCount: number | 0;
+  referenceCount: number;
+} | null;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: PROJECT_SLUGS_IN_USE_QUERY
+// Query: *[_type == "project" && defined(slug.current) && _id != $excludeId].slug.current
+export type PROJECT_SLUGS_IN_USE_QUERY_RESULT = Array<string | null>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_RESOURCES_QUERY
+// Query: *[_type == "resource"] | order(coalesce(updatedAt, publishedAt) desc){    _id,    title,    "slug": slug.current,    resourceType,    topics,    experienceLevel,    featured,    publishedAt,    updatedAt,    externalUrl,    githubUrl,    "fileUrl": file.asset->url,    "fileExtension": file.asset->extension,    "eventTitle": event->title,    "authorName": author->name  }
+export type ADMIN_RESOURCES_QUERY_RESULT = Array<{
+  _id: string;
+  title: string | null;
+  slug: string | null;
+  resourceType:
+    | "career"
+    | "cheatSheet"
+    | "guide"
+    | "interviewPrep"
+    | "recording"
+    | "repository"
+    | "slides"
+    | "tutorial"
+    | "workshop"
+    | null;
+  topics: Array<string> | null;
+  experienceLevel: "advanced" | "any" | "beginner" | "intermediate" | null;
+  featured: boolean | null;
+  publishedAt: string | null;
+  updatedAt: string | null;
+  externalUrl: string | null;
+  githubUrl: string | null;
+  fileUrl: string | null;
+  fileExtension: string | null;
+  eventTitle: string | null;
+  authorName: string | null;
+}>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_RESOURCE_BY_ID_QUERY
+// Query: *[_type == "resource" && _id == $id][0]{    _id,    title,    "slug": slug.current,    resourceType,    description,    topics,    experienceLevel,    featured,    externalUrl,    githubUrl,    "fileUrl": file.asset->url,    "fileName": file.asset->originalFilename,    "authorId": author._ref,    "eventId": event._ref,    "relatedResourceIds": relatedResources[]._ref,    publishedAt,    updatedAt,    "referenceCount": count(*[references(^._id)]),    // Split out because it is the case with a specific fix: go and edit the    // other resource's "related resources" list.    "relatedByCount": count(*[_type == "resource" && references(^._id)])  }
+export type ADMIN_RESOURCE_BY_ID_QUERY_RESULT = {
+  _id: string;
+  title: string | null;
+  slug: string | null;
+  resourceType:
+    | "career"
+    | "cheatSheet"
+    | "guide"
+    | "interviewPrep"
+    | "recording"
+    | "repository"
+    | "slides"
+    | "tutorial"
+    | "workshop"
+    | null;
+  description: string | null;
+  topics: Array<string> | null;
+  experienceLevel: "advanced" | "any" | "beginner" | "intermediate" | null;
+  featured: boolean | null;
+  externalUrl: string | null;
+  githubUrl: string | null;
+  fileUrl: string | null;
+  fileName: string | null;
+  authorId: string | null;
+  eventId: string | null;
+  relatedResourceIds: Array<string> | null;
+  publishedAt: string | null;
+  updatedAt: string | null;
+  referenceCount: number;
+  relatedByCount: number;
+} | null;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: RESOURCE_SLUGS_IN_USE_QUERY
+// Query: *[_type == "resource" && defined(slug.current) && _id != $excludeId].slug.current
+export type RESOURCE_SLUGS_IN_USE_QUERY_RESULT = Array<string | null>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_EVENT_OPTIONS_QUERY
+// Query: *[_type == "event"] | order(startsAt desc){ _id, title, startsAt }
+export type ADMIN_EVENT_OPTIONS_QUERY_RESULT = Array<{
+  _id: string;
+  title: string | null;
+  startsAt: string | null;
+}>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_RESOURCE_OPTIONS_QUERY
+// Query: *[_type == "resource" && _id != $excludeId] | order(title asc){ _id, title, resourceType }
+export type ADMIN_RESOURCE_OPTIONS_QUERY_RESULT = Array<{
+  _id: string;
+  title: string | null;
+  resourceType:
+    | "career"
+    | "cheatSheet"
+    | "guide"
+    | "interviewPrep"
+    | "recording"
+    | "repository"
+    | "slides"
+    | "tutorial"
+    | "workshop"
+    | null;
+}>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_OPPORTUNITIES_QUERY
+// Query: *[_type == "opportunity"] | order(    select(defined(deadline) => 0, 1) asc,    deadline asc,    postedAt desc  ){    _id,    title,    organization,    opportunityType,    location,    workArrangement,    deadline,    postedAt,    featured  }
+export type ADMIN_OPPORTUNITIES_QUERY_RESULT = Array<{
+  _id: string;
+  title: string | null;
+  organization: string | null;
+  opportunityType:
+    | "campus"
+    | "competition"
+    | "fullTime"
+    | "hackathon"
+    | "internship"
+    | "research"
+    | "scholarship"
+    | null;
+  location: string | null;
+  workArrangement: "hybrid" | "onSite" | "remote" | null;
+  deadline: string | null;
+  postedAt: string | null;
+  featured: boolean | null;
+}>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_OPPORTUNITY_BY_ID_QUERY
+// Query: *[_type == "opportunity" && _id == $id][0]{    _id,    title,    organization,    opportunityType,    description,    location,    workArrangement,    applicationUrl,    deadline,    postedAt,    skills,    majors,    featured  }
+export type ADMIN_OPPORTUNITY_BY_ID_QUERY_RESULT = {
+  _id: string;
+  title: string | null;
+  organization: string | null;
+  opportunityType:
+    | "campus"
+    | "competition"
+    | "fullTime"
+    | "hackathon"
+    | "internship"
+    | "research"
+    | "scholarship"
+    | null;
+  description: string | null;
+  location: string | null;
+  workArrangement: "hybrid" | "onSite" | "remote" | null;
+  applicationUrl: string | null;
+  deadline: string | null;
+  postedAt: string | null;
+  skills: Array<string> | null;
+  majors: Array<string> | null;
+  featured: boolean | null;
+} | null;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_PEOPLE_QUERY
+// Query: *[_type == "person"] | order(name asc){    _id,    name,    "slug": slug.current,    email,    shortBio,    githubUrl,    linkedinUrl,    websiteUrl,    "photoUrl": photo.asset->url,    "referenceCount": count(*[references(^._id)]),    "currentPositions": *[_type == "officerRole" && isCurrent == true && person._ref == ^._id].position  }
+export type ADMIN_PEOPLE_QUERY_RESULT = Array<{
+  _id: string;
+  name: string | null;
+  slug: string | null;
+  email: string | null;
+  shortBio: string | null;
+  githubUrl: string | null;
+  linkedinUrl: string | null;
+  websiteUrl: string | null;
+  photoUrl: string | null;
+  referenceCount: number;
+  currentPositions: Array<string | null>;
+}>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_PERSON_BY_ID_QUERY
+// Query: *[_type == "person" && _id == $id][0]{    _id,    name,    "slug": slug.current,    shortBio,    email,    githubUrl,    linkedinUrl,    websiteUrl,    "photoUrl": photo.asset->url,    "photoAlt": photo.alt,    "referenceCount": count(*[references(^._id)])  }
+export type ADMIN_PERSON_BY_ID_QUERY_RESULT = {
+  _id: string;
+  name: string | null;
+  slug: string | null;
+  shortBio: string | null;
+  email: string | null;
+  githubUrl: string | null;
+  linkedinUrl: string | null;
+  websiteUrl: string | null;
+  photoUrl: string | null;
+  photoAlt: string | null;
+  referenceCount: number;
+} | null;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: PERSON_SLUGS_IN_USE_QUERY
+// Query: *[_type == "person" && defined(slug.current) && _id != $excludeId].slug.current
+export type PERSON_SLUGS_IN_USE_QUERY_RESULT = Array<string | null>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_PERSON_USAGE_QUERY
+// Query: *[_type == "person" && _id == $id][0]{    "officerTerms": *[_type == "officerRole" && person._ref == ^._id]{ _id, position, term, isCurrent },    "eventsPresented": *[_type == "event" && ^._id in presenters[]._ref]{ _id, title },    "projectsLed": *[_type == "project" && lead._ref == ^._id]{ _id, name },    "projectsMentored": *[_type == "project" && ^._id in mentors[]._ref]{ _id, name },    "projectsContributed": *[_type == "project" && ^._id in contributors[]._ref]{ _id, name },    "resourcesAuthored": *[_type == "resource" && author._ref == ^._id]{ _id, title },    "advisorOf": *[_type == "siteSettings" && facultyAdvisor._ref == ^._id]{ _id }  }
+export type ADMIN_PERSON_USAGE_QUERY_RESULT = {
+  officerTerms: Array<{
+    _id: string;
+    position: string | null;
+    term: string | null;
+    isCurrent: boolean | null;
+  }>;
+  eventsPresented: Array<{
+    _id: string;
+    title: string | null;
+  }>;
+  projectsLed: Array<{
+    _id: string;
+    name: string | null;
+  }>;
+  projectsMentored: Array<{
+    _id: string;
+    name: string | null;
+  }>;
+  projectsContributed: Array<{
+    _id: string;
+    name: string | null;
+  }>;
+  resourcesAuthored: Array<{
+    _id: string;
+    title: string | null;
+  }>;
+  advisorOf: Array<{
+    _id: string;
+  }>;
+} | null;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_OFFICER_TERMS_QUERY
+// Query: *[_type == "officerRole"] | order(isCurrent desc, term desc, displayOrder asc, position asc){    _id,    position,    term,    isCurrent,    displayOrder,    "personId": person._ref,    "personName": person->name  }
+export type ADMIN_OFFICER_TERMS_QUERY_RESULT = Array<{
+  _id: string;
+  position: string | null;
+  term: string | null;
+  isCurrent: boolean | null;
+  displayOrder: number | null;
+  personId: string | null;
+  personName: string | null;
+}>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_OFFICER_TERM_BY_ID_QUERY
+// Query: *[_type == "officerRole" && _id == $id][0]{    _id,    position,    term,    isCurrent,    displayOrder,    "personId": person._ref,    "personName": person->name  }
+export type ADMIN_OFFICER_TERM_BY_ID_QUERY_RESULT = {
+  _id: string;
+  position: string | null;
+  term: string | null;
+  isCurrent: boolean | null;
+  displayOrder: number | null;
+  personId: string | null;
+  personName: string | null;
+} | null;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_SITE_SETTINGS_QUERY
+// Query: *[_type == "siteSettings" && _id == "siteSettings"][0]{    _id,    clubName,    shortName,    description,    meetingInfo,    footerNote,    contactEmail,    discordUrl,    githubUrl,    teamsUrl,    socialLinks[]{ _key, platform, label, url },    "facultyAdvisorId": facultyAdvisor._ref,    seo { metaTitle, metaDescription }  }
+export type ADMIN_SITE_SETTINGS_QUERY_RESULT = {
+  _id: "siteSettings";
+  clubName: string | null;
+  shortName: string | null;
+  description: string | null;
+  meetingInfo: string | null;
+  footerNote: string | null;
+  contactEmail: string | null;
+  discordUrl: string | null;
+  githubUrl: string | null;
+  teamsUrl: string | null;
+  socialLinks: Array<{
+    _key: string;
+    platform:
+      | "discord"
+      | "github"
+      | "instagram"
+      | "linkedin"
+      | "other"
+      | "teams"
+      | "youtube"
+      | null;
+    label: string | null;
+    url: string | null;
+  }> | null;
+  facultyAdvisorId: string | null;
+  seo: {
+    metaTitle: string | null;
+    metaDescription: string | null;
+  } | null;
+} | null;
+
 // Source: src/sanity/queries/events.ts
 // Variable: UPCOMING_EVENTS_QUERY
 // Query: *[_type == "event" && status != "cancelled" && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())]    | order(startsAt asc){        _id,  title,  "slug": slug.current,  status,  eventType,  startsAt,  endsAt,  summary,  featured,  experienceLevel,  noExperienceRequired,  location,      topics,      presenters[]->{ _id, name }    }
@@ -1458,6 +1817,23 @@ declare module "@sanity/client" {
     '\n  *[_type == "event" && _id == $id][0]{\n    _id,\n    title,\n    "slug": slug.current,\n    status,\n    eventType,\n    startsAt,\n    endsAt,\n    location,\n    summary,\n    experienceLevel,\n    noExperienceRequired,\n    prerequisites,\n    topics,\n    registrationUrl,\n    communityUrl,\n    recap,\n    featured,\n    "presenterIds": presenters[]._ref,\n    "referenceCount": count(*[references(^._id)])\n  }\n': ADMIN_EVENT_BY_ID_QUERY_RESULT;
     '\n  *[_type == "event" && defined(slug.current) && _id != $excludeId].slug.current\n': EVENT_SLUGS_IN_USE_QUERY_RESULT;
     '\n  *[_type == "person"] | order(name asc){ _id, name }\n': ADMIN_PEOPLE_OPTIONS_QUERY_RESULT;
+    '\n  *[_type == "project"] | order(\n    select(\n      status == "recruiting" => 0,\n      status == "active" => 1,\n      status == "testing" => 2,\n      status == "idea" => 3,\n      status == "shipped" => 4,\n      5\n    ) asc,\n    featured desc,\n    coalesce(startedAt, _createdAt) desc\n  ){\n    _id,\n    name,\n    "slug": slug.current,\n    status,\n    experienceLevel,\n    noExperienceRequired,\n    featured,\n    techStack,\n    // count() on a missing array is null, so coalesce for a plain number.\n    "openRoleCount": coalesce(count(openRoles), 0),\n    "mentorCount": coalesce(count(mentors), 0),\n    "leadName": lead->name,\n    startedAt,\n    completedAt\n  }\n': ADMIN_PROJECTS_QUERY_RESULT;
+    '\n  *[_type == "project" && _id == $id][0]{\n    _id,\n    name,\n    "slug": slug.current,\n    status,\n    shortDescription,\n    experienceLevel,\n    noExperienceRequired,\n    techStack,\n    learningOutcomes,\n    "leadId": lead._ref,\n    "mentorIds": mentors[]._ref,\n    "contributorIds": contributors[]._ref,\n    openRoles[]{ _key, title, description, experienceLevel, learningOutcome },\n    githubUrl,\n    demoUrl,\n    discussionUrl,\n    currentFocus,\n    latestMilestone,\n    startedAt,\n    completedAt,\n    featured,\n    "coverImageAlt": coverImage.alt,\n    "coverImageUrl": coverImage.asset->url,\n    "screenshotCount": coalesce(count(screenshots), 0),\n    "referenceCount": count(*[references(^._id)])\n  }\n': ADMIN_PROJECT_BY_ID_QUERY_RESULT;
+    '\n  *[_type == "project" && defined(slug.current) && _id != $excludeId].slug.current\n': PROJECT_SLUGS_IN_USE_QUERY_RESULT;
+    '\n  *[_type == "resource"] | order(coalesce(updatedAt, publishedAt) desc){\n    _id,\n    title,\n    "slug": slug.current,\n    resourceType,\n    topics,\n    experienceLevel,\n    featured,\n    publishedAt,\n    updatedAt,\n    externalUrl,\n    githubUrl,\n    "fileUrl": file.asset->url,\n    "fileExtension": file.asset->extension,\n    "eventTitle": event->title,\n    "authorName": author->name\n  }\n': ADMIN_RESOURCES_QUERY_RESULT;
+    '\n  *[_type == "resource" && _id == $id][0]{\n    _id,\n    title,\n    "slug": slug.current,\n    resourceType,\n    description,\n    topics,\n    experienceLevel,\n    featured,\n    externalUrl,\n    githubUrl,\n    "fileUrl": file.asset->url,\n    "fileName": file.asset->originalFilename,\n    "authorId": author._ref,\n    "eventId": event._ref,\n    "relatedResourceIds": relatedResources[]._ref,\n    publishedAt,\n    updatedAt,\n    "referenceCount": count(*[references(^._id)]),\n    // Split out because it is the case with a specific fix: go and edit the\n    // other resource\'s "related resources" list.\n    "relatedByCount": count(*[_type == "resource" && references(^._id)])\n  }\n': ADMIN_RESOURCE_BY_ID_QUERY_RESULT;
+    '\n  *[_type == "resource" && defined(slug.current) && _id != $excludeId].slug.current\n': RESOURCE_SLUGS_IN_USE_QUERY_RESULT;
+    '\n  *[_type == "event"] | order(startsAt desc){ _id, title, startsAt }\n': ADMIN_EVENT_OPTIONS_QUERY_RESULT;
+    '\n  *[_type == "resource" && _id != $excludeId] | order(title asc){ _id, title, resourceType }\n': ADMIN_RESOURCE_OPTIONS_QUERY_RESULT;
+    '\n  *[_type == "opportunity"] | order(\n    select(defined(deadline) => 0, 1) asc,\n    deadline asc,\n    postedAt desc\n  ){\n    _id,\n    title,\n    organization,\n    opportunityType,\n    location,\n    workArrangement,\n    deadline,\n    postedAt,\n    featured\n  }\n': ADMIN_OPPORTUNITIES_QUERY_RESULT;
+    '\n  *[_type == "opportunity" && _id == $id][0]{\n    _id,\n    title,\n    organization,\n    opportunityType,\n    description,\n    location,\n    workArrangement,\n    applicationUrl,\n    deadline,\n    postedAt,\n    skills,\n    majors,\n    featured\n  }\n': ADMIN_OPPORTUNITY_BY_ID_QUERY_RESULT;
+    '\n  *[_type == "person"] | order(name asc){\n    _id,\n    name,\n    "slug": slug.current,\n    email,\n    shortBio,\n    githubUrl,\n    linkedinUrl,\n    websiteUrl,\n    "photoUrl": photo.asset->url,\n    "referenceCount": count(*[references(^._id)]),\n    "currentPositions": *[_type == "officerRole" && isCurrent == true && person._ref == ^._id].position\n  }\n': ADMIN_PEOPLE_QUERY_RESULT;
+    '\n  *[_type == "person" && _id == $id][0]{\n    _id,\n    name,\n    "slug": slug.current,\n    shortBio,\n    email,\n    githubUrl,\n    linkedinUrl,\n    websiteUrl,\n    "photoUrl": photo.asset->url,\n    "photoAlt": photo.alt,\n    "referenceCount": count(*[references(^._id)])\n  }\n': ADMIN_PERSON_BY_ID_QUERY_RESULT;
+    '\n  *[_type == "person" && defined(slug.current) && _id != $excludeId].slug.current\n': PERSON_SLUGS_IN_USE_QUERY_RESULT;
+    '\n  *[_type == "person" && _id == $id][0]{\n    "officerTerms": *[_type == "officerRole" && person._ref == ^._id]{ _id, position, term, isCurrent },\n    "eventsPresented": *[_type == "event" && ^._id in presenters[]._ref]{ _id, title },\n    "projectsLed": *[_type == "project" && lead._ref == ^._id]{ _id, name },\n    "projectsMentored": *[_type == "project" && ^._id in mentors[]._ref]{ _id, name },\n    "projectsContributed": *[_type == "project" && ^._id in contributors[]._ref]{ _id, name },\n    "resourcesAuthored": *[_type == "resource" && author._ref == ^._id]{ _id, title },\n    "advisorOf": *[_type == "siteSettings" && facultyAdvisor._ref == ^._id]{ _id }\n  }\n': ADMIN_PERSON_USAGE_QUERY_RESULT;
+    '\n  *[_type == "officerRole"] | order(isCurrent desc, term desc, displayOrder asc, position asc){\n    _id,\n    position,\n    term,\n    isCurrent,\n    displayOrder,\n    "personId": person._ref,\n    "personName": person->name\n  }\n': ADMIN_OFFICER_TERMS_QUERY_RESULT;
+    '\n  *[_type == "officerRole" && _id == $id][0]{\n    _id,\n    position,\n    term,\n    isCurrent,\n    displayOrder,\n    "personId": person._ref,\n    "personName": person->name\n  }\n': ADMIN_OFFICER_TERM_BY_ID_QUERY_RESULT;
+    '\n  *[_type == "siteSettings" && _id == "siteSettings"][0]{\n    _id,\n    clubName,\n    shortName,\n    description,\n    meetingInfo,\n    footerNote,\n    contactEmail,\n    discordUrl,\n    githubUrl,\n    teamsUrl,\n    socialLinks[]{ _key, platform, label, url },\n    "facultyAdvisorId": facultyAdvisor._ref,\n    seo { metaTitle, metaDescription }\n  }\n': ADMIN_SITE_SETTINGS_QUERY_RESULT;
     '\n  *[_type == "event" && status != "cancelled" && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())]\n    | order(startsAt asc){\n      \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n      topics,\n      presenters[]->{ _id, name }\n    }\n': UPCOMING_EVENTS_QUERY_RESULT;
     '\n  *[_type == "event" && status != "cancelled"\n    && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]\n    | order(startsAt desc){\n      \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n      topics,\n      presenters[]->{ _id, name },\n      "resourceCount": count(*[_type == "resource" && event._ref == ^._id])\n    }\n': PAST_EVENTS_QUERY_RESULT;
     '\n  *[_type == "event" && slug.current == $slug][0]{\n    \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n    description,\n    prerequisites,\n    setupInstructions,\n    topics,\n    registrationUrl,\n    communityUrl,\n    recap,\n    presenters[]->{ \n  _id,\n  name,\n  "slug": slug.current,\n  photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  shortBio,\n  githubUrl,\n  linkedinUrl,\n  websiteUrl\n },\n    // Materials created for this event, plus anything explicitly highlighted.\n    "resources": array::unique([\n      ...*[_type == "resource" && event._ref == ^._id]{ \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n },\n      ...relatedResources[]->{ \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n }\n    ]),\n    seo { \n  metaTitle,\n  metaDescription,\n  shareImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n }\n  }\n': EVENT_BY_SLUG_QUERY_RESULT;

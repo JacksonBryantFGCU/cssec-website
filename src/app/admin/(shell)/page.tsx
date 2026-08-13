@@ -8,7 +8,7 @@ import { AdvancedCmsCard } from '@/components/admin/advanced-cms'
 import { EmptyState } from '@/components/admin/empty-state'
 import { MetaBadge } from '@/components/admin/status-badge'
 import { buttonVariants } from '@/components/ui/button'
-import { formatClubDate, formatClubDateTime } from '@/lib/time'
+import { formatCalendarDate, formatClubDate, formatClubDateTime } from '@/lib/time'
 import { cn } from '@/lib/utils'
 import { getAdminClient } from '@/sanity/lib/admin-client'
 import {
@@ -68,8 +68,8 @@ export default async function AdminDashboardPage() {
     ...attention.opportunitiesClosingSoon.map((opportunity) => ({
       id: `deadline-${opportunity._id}`,
       label: [opportunity.title, opportunity.organization].filter(Boolean).join(' · '),
-      detail: `Deadline ${formatClubDate(opportunity.deadline)} — closes within a week.`,
-      href: '/studio',
+      detail: `Deadline ${formatCalendarDate(opportunity.deadline)} — closes within a week.`,
+      href: `/admin/opportunities/${opportunity._id}/edit`,
     })),
   ]
 
@@ -98,17 +98,45 @@ export default async function AdminDashboardPage() {
             />
             <AdminStat
               hint={`${stats.recruitingProjects} recruiting`}
+              href="/admin/projects"
               icon={FolderGit2}
               label="Active projects"
               value={stats.activeProjects}
             />
-            <AdminStat icon={Briefcase} label="Open opportunities" value={stats.openOpportunities} />
+            <AdminStat
+              href="/admin/opportunities"
+              icon={Briefcase}
+              label="Open opportunities"
+              value={stats.openOpportunities}
+            />
             <AdminStat
               hint={`${stats.people} people`}
+              href="/admin/resources"
               icon={Library}
               label="Resources"
               value={stats.publishedResources}
             />
+          </div>
+        </AdminSection>
+
+        {/* One line, four verbs: the things an officer signs in to do. Adding
+            more would make the dashboard a second navigation. */}
+        <AdminSection id="quick-actions" title="Add something">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { href: '/admin/events/new', label: 'New event' },
+              { href: '/admin/projects/new', label: 'New project' },
+              { href: '/admin/resources/new', label: 'Add resource' },
+              { href: '/admin/opportunities/new', label: 'Post opportunity' },
+            ].map((action) => (
+              <Link
+                className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+                href={action.href}
+                key={action.href}
+              >
+                {action.label}
+              </Link>
+            ))}
           </div>
         </AdminSection>
 
@@ -199,8 +227,8 @@ export default async function AdminDashboardPage() {
         </AdminSection>
 
         <AdvancedCmsCard>
-          Projects, resources, people and site settings are edited in Sanity Studio until their
-          screens land here.
+          Everything routine is managed here. Studio is for the rest: long rich-text descriptions,
+          screenshot galleries, share images and repairing an unusual reference.
         </AdvancedCmsCard>
       </div>
     </>

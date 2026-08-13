@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import { decideAdminAccess } from './access.ts'
-import { can } from './permissions.ts'
+import { can, CAPABILITIES } from './permissions.ts'
 import { parseRole } from './roles.ts'
 
 /**
@@ -62,6 +62,34 @@ test('unknown metadata values never become roles', () => {
 })
 
 test('no capability is granted without a role', () => {
-  assert.equal(can(null, 'admin:access'), false)
-  assert.equal(can(null, 'content:write'), false)
+  for (const capability of CAPABILITIES) {
+    assert.equal(can(null, capability), false, capability)
+  }
+})
+
+test('officers do routine content work; admins also hold the club-wide ones', () => {
+  // The split is by what a mistake costs the club, not by seniority — see the
+  // note in permissions.ts.
+  assert.equal(can('officer', 'content:write'), true)
+  assert.equal(can('admin', 'content:write'), true)
+
+  for (const capability of ['officers:manage', 'settings:manage'] as const) {
+    assert.equal(can('officer', capability), false, capability)
+    assert.equal(can('admin', capability), true, capability)
+  }
+})
+
+test('an officer is refused the club-wide screens, and an admin is not', () => {
+  for (const capability of ['officers:manage', 'settings:manage'] as const) {
+    assert.equal(
+      decideAdminAccess({ userId: 'user_6', role: 'officer' }, capability).outcome,
+      'forbidden',
+      capability,
+    )
+    assert.equal(
+      decideAdminAccess({ userId: 'user_7', role: 'admin' }, capability).outcome,
+      'allowed',
+      capability,
+    )
+  }
 })
