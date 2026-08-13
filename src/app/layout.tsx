@@ -1,25 +1,56 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { JetBrains_Mono, Newsreader, Plus_Jakarta_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { siteUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+/**
+ * The four families from the approved design, loaded exactly as the reference
+ * specifies them — no substitutions were needed, all four are on Google Fonts.
+ *
+ *   sans    interface and body copy
+ *   display headings and the club wordmark
+ *   serif   editorial moments only (standfirsts, archive headings)
+ *   mono    metadata only — dates, counts, tags, kinds, shortcuts
+ */
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
+  display: "swap",
+});
+
+const newsreader = Newsreader({
+  variable: "--font-newsreader",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "CSSEC — FGCU Computer Science & Software Engineering Club",
+  metadataBase: new URL(siteUrl()),
+  title: {
+    default: "CSSEC — Computer Science & Software Engineering Club at FGCU",
+    template: "%s — CSSEC",
+  },
   description:
-    "The Computer Science & Software Engineering Club at Florida Gulf Coast University.",
+    "The Computer Science & Software Engineering Club at Florida Gulf Coast University. Weekly workshops, mentored software projects, and a permanent archive of everything we have taught.",
+  openGraph: {
+    type: "website",
+    siteName: "CSSEC",
+    locale: "en_US",
+  },
 };
 
 // `ClerkProvider` is a Server Component here: it supplies auth context to the
@@ -32,7 +63,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <ClerkProvider signInUrl="/sign-in">
       <html
         lang="en"
-        className={cn("h-full", "antialiased", geistSans.variable, geistMono.variable, "font-sans", inter.variable)}
+        className={cn(
+          "h-full antialiased font-sans",
+          jakarta.variable,
+          spaceGrotesk.variable,
+          newsreader.variable,
+          jetbrainsMono.variable,
+        )}
       >
         <body className="min-h-full flex flex-col">{children}</body>
       </html>

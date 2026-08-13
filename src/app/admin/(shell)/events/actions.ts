@@ -38,12 +38,24 @@ import { EVENT_SLUGS_IN_USE_QUERY } from '@/sanity/queries/admin'
 /**
  * Everything a change to an event can affect.
  *
- * One place to extend when the public event pages are built — add their paths
- * here and every existing mutation invalidates them correctly.
+ * The single place every mutation in this file calls, so a new public surface
+ * is wired up once rather than in four actions.
+ *
+ * The public pages are cached and served statically; naming them here is what
+ * makes an officer's save visible immediately without turning caching off
+ * globally. `/events/[slug]` is invalidated as a route rather than one URL —
+ * a save can rename a slug, retire an event from the upcoming list, or change
+ * which sessions the "also coming up" rail on *other* event pages shows, so
+ * the affected page is not always the one that was edited.
  */
 function revalidateEventContent(): void {
   // Covers /admin and every nested admin route in one call.
   revalidatePath('/admin', 'layout')
+
+  revalidatePath('/')
+  revalidatePath('/events')
+  revalidatePath('/events/[slug]', 'page')
+  // The `.ics` download reads uncached, so it needs no invalidation here.
 }
 
 /** Echoes the raw submission back to the form after a rejected save. */

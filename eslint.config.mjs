@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // The approved Claude Design export. Reference material, never built or
+    // imported, and deliberately left byte-for-byte as delivered — so it is
+    // not ours to lint or fix.
+    "design-reference/**",
   ]),
 ]);
 

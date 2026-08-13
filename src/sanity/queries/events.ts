@@ -16,12 +16,22 @@ export const UPCOMING_EVENTS_QUERY = defineQuery(/* groq */ `
     }
 `)
 
-/** Events that have already happened, most recent first. */
+/**
+ * Events that have already happened, most recent first — the archive.
+ *
+ * Carries `topics` and the number of materials attached to it, because the
+ * archive is presented as a table whose last two columns are exactly those.
+ * The count is derived from the resources pointing back at the event, so it
+ * cannot fall out of step with the library.
+ */
 export const PAST_EVENTS_QUERY = defineQuery(/* groq */ `
-  *[_type == "event" && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]
+  *[_type == "event" && status != "cancelled"
+    && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]
     | order(startsAt desc){
       ${eventCardFragment},
-      presenters[]->{ _id, name }
+      topics,
+      presenters[]->{ _id, name },
+      "resourceCount": count(*[_type == "resource" && event._ref == ^._id])
     }
 `)
 

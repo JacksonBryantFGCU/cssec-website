@@ -7,9 +7,13 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-jakarta);
+  --font-mono: var(--font-jetbrains-mono);
+  /* Interface headings (shadcn / admin) stay on the interface sans. The public
+     site opts into the display face explicitly with `font-display`. */
+  --font-heading: var(--font-jakarta);
+  --font-display: var(--font-space-grotesk);
+  --font-serif: var(--font-newsreader);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -46,6 +50,96 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/**
+ * CSSEC public design tokens.
+ *
+ * Taken verbatim from the approved Claude Design export
+ * (`design-reference/Project details needed/CSSEC Prototype.dc.html`), whose
+ * component-system page states the system directly: navy for shell surfaces,
+ * green for action, `#0B4A31` on `#E4F6EC` for beginner-friendly status, blue
+ * for "some experience", amber for deadline urgency.
+ *
+ * These live in their own namespace *alongside* the shadcn tokens above rather
+ * than overwriting them. `/admin` and `/studio` are built on `--primary`,
+ * `--background` and friends; redefining those would restyle both. Public
+ * components use only the names below.
+ */
+@theme {
+  /* Shell — navy. Header, page mastheads, footer. */
+  --color-navy: #0a2033;
+  --color-navy-deep: #081d2e;
+  --color-navy-footer: #071726;
+  --color-navy-raised: #0d2740;
+  --color-navy-field: #0c2841;
+  --color-navy-line: #1b3a55;
+  --color-navy-edge: #1f4162;
+  --color-navy-border: #2a5378;
+  --color-navy-border-hover: #4e7ea6;
+  --color-navy-key: #27527a;
+
+  /* Type on navy, brightest to faintest. */
+  --color-navy-bright: #f0f5f9;
+  --color-navy-fg: #eaf0f5;
+  --color-navy-body: #dce7f0;
+  --color-navy-muted: #b6c9d8;
+  --color-navy-dim: #a9c0d2;
+  --color-navy-soft: #9fb8cb;
+  --color-navy-faint: #8faec6;
+  --color-navy-quiet: #7b9ab2;
+  --color-navy-whisper: #5f7c95;
+  --color-navy-link: #9fc7e8;
+
+  /* Action — green. */
+  --color-club-green: #2fa36b;
+  --color-club-green-hover: #38bc7c;
+  --color-club-green-ink: #04231a;
+  --color-club-green-bright: #7ce0a8;
+  --color-club-green-deep: #0f5f41;
+  --color-club-link: #1a7a52;
+  --color-club-link-hover: #12603f;
+  --color-club-dark: #0b4a31;
+  --color-club-surface: #e4f6ec;
+  --color-club-surface-soft: #f1f6f2;
+  --color-club-surface-tint: #cdeddd;
+  --color-club-border: #a9dcc3;
+  --color-club-border-soft: #dce8df;
+  --color-club-rule: #c9e4d5;
+
+  /* Paper and ink — the light editorial surfaces. */
+  --color-paper: #f7f8f6;
+  --color-paper-card: #fcfdfb;
+  --color-paper-warm: #fbfbf8;
+  --color-paper-field: #fbfcfa;
+  --color-ink: #11201b;
+  --color-ink-strong: #26312b;
+  --color-ink-body: #3e4a45;
+  --color-ink-muted: #4b564f;
+  --color-ink-soft: #5b6660;
+  --color-ink-faint: #6e7a72;
+  --color-ink-label: #8a968e;
+  --color-ink-disabled: #a3ada5;
+
+  /* Rules and borders on light surfaces. */
+  --color-rule: #e4e7e1;
+  --color-rule-card: #dfe3dc;
+  --color-rule-strong: #d5dbd3;
+  --color-rule-dashed: #c7d0c8;
+  --color-rule-fill: #edefea;
+
+  /* Status accents. Each is always paired with a glyph, never colour alone. */
+  --color-level-blue: #1b4a72;
+  --color-level-blue-surface: #dceaf6;
+  --color-level-blue-border: #aecde8;
+  --color-urgent: #b3651f;
+  --color-urgent-surface: #fdf7f2;
+  --color-urgent-border: #e8cdbe;
+
+  /* External platforms. */
+  --color-discord: #5865f2;
+  --color-teams: #6264a7;
+  --color-github: #c9d6e2;
 }
 
 :root {
@@ -126,5 +220,41 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/**
+ * Public-site base rules.
+ *
+ * Scoped to `.site-root` — applied once by the `(public)` layout — so the
+ * green focus ring and the paper background never reach `/admin` or `/studio`,
+ * which keep the shadcn ring and their own surfaces.
+ */
+@layer base {
+  .site-root :focus-visible {
+    outline: 2px solid var(--color-club-green);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-root *,
+    .site-root *::before,
+    .site-root *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@utility masthead-grid {
+  /* The faint 34px graph-paper texture behind the homepage masthead. */
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+  background-size: 34px 34px;
+
+  @media (width < 48rem) {
+    background-size: 28px 28px;
   }
 }

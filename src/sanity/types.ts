@@ -688,7 +688,7 @@ export type UPCOMING_EVENTS_QUERY_RESULT = Array<{
 
 // Source: src/sanity/queries/events.ts
 // Variable: PAST_EVENTS_QUERY
-// Query: *[_type == "event" && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]    | order(startsAt desc){        _id,  title,  "slug": slug.current,  status,  eventType,  startsAt,  endsAt,  summary,  featured,  experienceLevel,  noExperienceRequired,  location,      presenters[]->{ _id, name }    }
+// Query: *[_type == "event" && status != "cancelled"    && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]    | order(startsAt desc){        _id,  title,  "slug": slug.current,  status,  eventType,  startsAt,  endsAt,  summary,  featured,  experienceLevel,  noExperienceRequired,  location,      topics,      presenters[]->{ _id, name },      "resourceCount": count(*[_type == "resource" && event._ref == ^._id])    }
 export type PAST_EVENTS_QUERY_RESULT = Array<{
   _id: string;
   title: string | null;
@@ -710,10 +710,12 @@ export type PAST_EVENTS_QUERY_RESULT = Array<{
   experienceLevel: "advanced" | "any" | "beginner" | "intermediate" | null;
   noExperienceRequired: boolean | null;
   location: EventLocation | null;
+  topics: Array<string> | null;
   presenters: Array<{
     _id: string;
     name: string | null;
   }> | null;
+  resourceCount: number;
 }>;
 
 // Source: src/sanity/queries/events.ts
@@ -999,6 +1001,57 @@ export type RECRUITING_PROJECTS_QUERY_RESULT = Array<{
     crop: SanityImageCrop | null;
   } | null;
   openRoleCount: number | null;
+}>;
+
+// Source: src/sanity/queries/projects.ts
+// Variable: HOME_PROJECTS_QUERY
+// Query: *[_type == "project" && status in ["recruiting", "active"]]    | order(select(status == "recruiting" => 0, 1) asc, featured desc, _createdAt desc)[0...2]{        _id,  name,  "slug": slug.current,  status,  shortDescription,  techStack,  experienceLevel,  noExperienceRequired,  featured,  coverImage {   asset->{ _id, url, metadata { lqip, dimensions } },  alt,  hotspot,  crop },  "openRoleCount": count(openRoles),      learningOutcomes,      githubUrl,      openRoles[]{ _key, title, experienceLevel },      lead->{ _id, name },      mentors[]->{ _id, name }    }
+export type HOME_PROJECTS_QUERY_RESULT = Array<{
+  _id: string;
+  name: string | null;
+  slug: string | null;
+  status:
+    | "active"
+    | "archived"
+    | "idea"
+    | "recruiting"
+    | "shipped"
+    | "testing"
+    | null;
+  shortDescription: string | null;
+  techStack: Array<string> | null;
+  experienceLevel: "advanced" | "any" | "beginner" | "intermediate" | null;
+  noExperienceRequired: boolean | null;
+  featured: boolean | null;
+  coverImage: {
+    asset: {
+      _id: string;
+      url: string | null;
+      metadata: {
+        lqip: string | null;
+        dimensions: SanityImageDimensions | null;
+      } | null;
+    } | null;
+    alt: string | null;
+    hotspot: SanityImageHotspot | null;
+    crop: SanityImageCrop | null;
+  } | null;
+  openRoleCount: number | null;
+  learningOutcomes: Array<string> | null;
+  githubUrl: string | null;
+  openRoles: Array<{
+    _key: string;
+    title: string | null;
+    experienceLevel: "advanced" | "any" | "beginner" | "intermediate" | null;
+  }> | null;
+  lead: {
+    _id: string;
+    name: string | null;
+  } | null;
+  mentors: Array<{
+    _id: string;
+    name: string | null;
+  }> | null;
 }>;
 
 // Source: src/sanity/queries/projects.ts
@@ -1310,221 +1363,67 @@ export type RESOURCE_SLUGS_QUERY_RESULT = Array<{
 
 // Source: src/sanity/queries/siteSettings.ts
 // Variable: SITE_SETTINGS_QUERY
-// Query: *[_id == "siteSettings"][0]{    clubName,    shortName,    description,    meetingInfo,    contactEmail,    discordUrl,    githubUrl,    teamsUrl,    footerNote,    socialLinks[]{ _key, platform, label, url },    facultyAdvisor->{      _id,      name,      email,      photo {   asset->{ _id, url, metadata { lqip, dimensions } },  alt,  hotspot,  crop }    },    seo {   metaTitle,  metaDescription,  shareImage {   asset->{ _id, url, metadata { lqip, dimensions } },  alt,  hotspot,  crop } }  }
-export type SITE_SETTINGS_QUERY_RESULT =
-  | {
-      clubName: null;
-      shortName: null;
-      description: null;
-      meetingInfo: null;
-      contactEmail: null;
-      discordUrl: null;
-      githubUrl: null;
-      teamsUrl: null;
-      footerNote: null;
-      socialLinks: null;
-      facultyAdvisor: null;
-      seo: null;
-    }
-  | {
-      clubName: null;
-      shortName: null;
-      description: null;
-      meetingInfo: null;
-      contactEmail: null;
-      discordUrl: null;
-      githubUrl: string | null;
-      teamsUrl: null;
-      footerNote: null;
-      socialLinks: null;
-      facultyAdvisor: null;
-      seo: null;
-    }
-  | {
-      clubName: null;
-      shortName: null;
-      description: Array<{
-        children?: Array<{
-          marks?: Array<string>;
-          text?: string;
-          _type: "span";
-          _key: string;
-        }>;
-        style?:
-          "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "normal";
-        listItem?: "bullet" | "number";
-        markDefs?: Array<{
-          href?: string;
-          _type: "link";
-          _key: string;
-        }>;
-        level?: number;
-        _type: "block";
-        _key: string;
-      }> | null;
-      meetingInfo: null;
-      contactEmail: null;
-      discordUrl: null;
-      githubUrl: null;
-      teamsUrl: null;
-      footerNote: null;
-      socialLinks: null;
-      facultyAdvisor: null;
-      seo: {
-        metaTitle: string | null;
-        metaDescription: string | null;
-        shareImage: {
-          asset: {
-            _id: string;
-            url: string | null;
-            metadata: {
-              lqip: string | null;
-              dimensions: SanityImageDimensions | null;
-            } | null;
-          } | null;
-          alt: string | null;
-          hotspot: SanityImageHotspot | null;
-          crop: SanityImageCrop | null;
-        } | null;
-      } | null;
-    }
-  | {
-      clubName: null;
-      shortName: null;
-      description: Array<{
-        children?: Array<{
-          marks?: Array<string>;
-          text?: string;
-          _type: "span";
-          _key: string;
-        }>;
-        style?:
-          "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "normal";
-        listItem?: "bullet" | "number";
-        markDefs?: Array<{
-          href?: string;
-          _type: "link";
-          _key: string;
-        }>;
-        level?: number;
-        _type: "block";
-        _key: string;
-      }> | null;
-      meetingInfo: null;
-      contactEmail: null;
-      discordUrl: null;
-      githubUrl: string | null;
-      teamsUrl: null;
-      footerNote: null;
-      socialLinks: null;
-      facultyAdvisor: null;
-      seo: {
-        metaTitle: string | null;
-        metaDescription: string | null;
-        shareImage: {
-          asset: {
-            _id: string;
-            url: string | null;
-            metadata: {
-              lqip: string | null;
-              dimensions: SanityImageDimensions | null;
-            } | null;
-          } | null;
-          alt: string | null;
-          hotspot: SanityImageHotspot | null;
-          crop: SanityImageCrop | null;
-        } | null;
-      } | null;
-    }
-  | {
-      clubName: null;
-      shortName: null;
-      description: string | null;
-      meetingInfo: null;
-      contactEmail: null;
-      discordUrl: null;
-      githubUrl: null;
-      teamsUrl: null;
-      footerNote: null;
-      socialLinks: null;
-      facultyAdvisor: null;
-      seo: null;
-    }
-  | {
-      clubName: null;
-      shortName: null;
-      description: string | null;
-      meetingInfo: null;
-      contactEmail: null;
-      discordUrl: null;
-      githubUrl: string | null;
-      teamsUrl: null;
-      footerNote: null;
-      socialLinks: null;
-      facultyAdvisor: null;
-      seo: null;
-    }
-  | {
-      clubName: string | null;
-      shortName: string | null;
-      description: string | null;
-      meetingInfo: string | null;
-      contactEmail: string | null;
-      discordUrl: string | null;
-      githubUrl: string | null;
-      teamsUrl: string | null;
-      footerNote: string | null;
-      socialLinks: Array<{
-        _key: string;
-        platform:
-          | "discord"
-          | "github"
-          | "instagram"
-          | "linkedin"
-          | "other"
-          | "teams"
-          | "youtube"
-          | null;
-        label: string | null;
-        url: string | null;
-      }> | null;
-      facultyAdvisor: {
+// Query: *[_type == "siteSettings" && _id == "siteSettings"][0]{    clubName,    shortName,    description,    meetingInfo,    contactEmail,    discordUrl,    githubUrl,    teamsUrl,    footerNote,    socialLinks[]{ _key, platform, label, url },    facultyAdvisor->{      _id,      name,      email,      photo {   asset->{ _id, url, metadata { lqip, dimensions } },  alt,  hotspot,  crop }    },    seo {   metaTitle,  metaDescription,  shareImage {   asset->{ _id, url, metadata { lqip, dimensions } },  alt,  hotspot,  crop } }  }
+export type SITE_SETTINGS_QUERY_RESULT = {
+  clubName: string | null;
+  shortName: string | null;
+  description: string | null;
+  meetingInfo: string | null;
+  contactEmail: string | null;
+  discordUrl: string | null;
+  githubUrl: string | null;
+  teamsUrl: string | null;
+  footerNote: string | null;
+  socialLinks: Array<{
+    _key: string;
+    platform:
+      | "discord"
+      | "github"
+      | "instagram"
+      | "linkedin"
+      | "other"
+      | "teams"
+      | "youtube"
+      | null;
+    label: string | null;
+    url: string | null;
+  }> | null;
+  facultyAdvisor: {
+    _id: string;
+    name: string | null;
+    email: string | null;
+    photo: {
+      asset: {
         _id: string;
-        name: string | null;
-        email: string | null;
-        photo: {
-          asset: {
-            _id: string;
-            url: string | null;
-            metadata: {
-              lqip: string | null;
-              dimensions: SanityImageDimensions | null;
-            } | null;
-          } | null;
-          alt: string | null;
-          hotspot: SanityImageHotspot | null;
-          crop: SanityImageCrop | null;
+        url: string | null;
+        metadata: {
+          lqip: string | null;
+          dimensions: SanityImageDimensions | null;
         } | null;
       } | null;
-      seo: {
-        metaTitle: string | null;
-        metaDescription: string | null;
-        shareImage: {
-          asset: {
-            _id: string;
-            url: string | null;
-            metadata: {
-              lqip: string | null;
-              dimensions: SanityImageDimensions | null;
-            } | null;
-          } | null;
-          alt: string | null;
-          hotspot: SanityImageHotspot | null;
-          crop: SanityImageCrop | null;
+      alt: string | null;
+      hotspot: SanityImageHotspot | null;
+      crop: SanityImageCrop | null;
+    } | null;
+  } | null;
+  seo: {
+    metaTitle: string | null;
+    metaDescription: string | null;
+    shareImage: {
+      asset: {
+        _id: string;
+        url: string | null;
+        metadata: {
+          lqip: string | null;
+          dimensions: SanityImageDimensions | null;
         } | null;
       } | null;
-    }
-  | null;
+      alt: string | null;
+      hotspot: SanityImageHotspot | null;
+      crop: SanityImageCrop | null;
+    } | null;
+  } | null;
+} | null;
 
 // Query TypeMap
 import "@sanity/client";
@@ -1538,7 +1437,7 @@ declare module "@sanity/client" {
     '\n  *[_type == "event" && defined(slug.current) && _id != $excludeId].slug.current\n': EVENT_SLUGS_IN_USE_QUERY_RESULT;
     '\n  *[_type == "person"] | order(name asc){ _id, name }\n': ADMIN_PEOPLE_OPTIONS_QUERY_RESULT;
     '\n  *[_type == "event" && status != "cancelled" && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())]\n    | order(startsAt asc){\n      \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n      presenters[]->{ _id, name }\n    }\n': UPCOMING_EVENTS_QUERY_RESULT;
-    '\n  *[_type == "event" && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]\n    | order(startsAt desc){\n      \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n      presenters[]->{ _id, name }\n    }\n': PAST_EVENTS_QUERY_RESULT;
+    '\n  *[_type == "event" && status != "cancelled"\n    && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]\n    | order(startsAt desc){\n      \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n      topics,\n      presenters[]->{ _id, name },\n      "resourceCount": count(*[_type == "resource" && event._ref == ^._id])\n    }\n': PAST_EVENTS_QUERY_RESULT;
     '\n  *[_type == "event" && slug.current == $slug][0]{\n    \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n    description,\n    prerequisites,\n    setupInstructions,\n    topics,\n    registrationUrl,\n    communityUrl,\n    recap,\n    presenters[]->{ \n  _id,\n  name,\n  "slug": slug.current,\n  photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  shortBio,\n  githubUrl,\n  linkedinUrl,\n  websiteUrl\n },\n    // Materials created for this event, plus anything explicitly highlighted.\n    "resources": array::unique([\n      ...*[_type == "resource" && event._ref == ^._id]{ \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n },\n      ...relatedResources[]->{ \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n }\n    ]),\n    seo { \n  metaTitle,\n  metaDescription,\n  shareImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n }\n  }\n': EVENT_BY_SLUG_QUERY_RESULT;
     '\n  *[_type == "event" && defined(slug.current)]{ "slug": slug.current }\n': EVENT_SLUGS_QUERY_RESULT;
     '\n  *[_type == "opportunity" && (!defined(deadline) || dateTime(deadline + "T23:59:59Z") >= dateTime(now()))]\n    | order(featured desc, deadline asc, postedAt desc){\n      \n  _id,\n  title,\n  organization,\n  opportunityType,\n  description,\n  location,\n  workArrangement,\n  applicationUrl,\n  deadline,\n  postedAt,\n  skills,\n  featured\n\n    }\n': ACTIVE_OPPORTUNITIES_QUERY_RESULT;
@@ -1546,12 +1445,13 @@ declare module "@sanity/client" {
     '\n  *[_type == "officerRole" && isCurrent == true] | order(displayOrder asc, position asc){\n    _id,\n    position,\n    term,\n    person->{ \n  _id,\n  name,\n  "slug": slug.current,\n  photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  shortBio,\n  githubUrl,\n  linkedinUrl,\n  websiteUrl\n }\n  }\n': CURRENT_OFFICERS_QUERY_RESULT;
     '\n  *[_type == "project"] | order(featured desc, coalesce(startedAt, _createdAt) desc){\n    \n  _id,\n  name,\n  "slug": slug.current,\n  status,\n  shortDescription,\n  techStack,\n  experienceLevel,\n  noExperienceRequired,\n  featured,\n  coverImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  "openRoleCount": count(openRoles)\n\n  }\n': PROJECTS_QUERY_RESULT;
     '\n  *[_type == "project" && status == "recruiting"] | order(featured desc, _createdAt desc){\n    \n  _id,\n  name,\n  "slug": slug.current,\n  status,\n  shortDescription,\n  techStack,\n  experienceLevel,\n  noExperienceRequired,\n  featured,\n  coverImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  "openRoleCount": count(openRoles)\n\n  }\n': RECRUITING_PROJECTS_QUERY_RESULT;
+    '\n  *[_type == "project" && status in ["recruiting", "active"]]\n    | order(select(status == "recruiting" => 0, 1) asc, featured desc, _createdAt desc)[0...2]{\n      \n  _id,\n  name,\n  "slug": slug.current,\n  status,\n  shortDescription,\n  techStack,\n  experienceLevel,\n  noExperienceRequired,\n  featured,\n  coverImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  "openRoleCount": count(openRoles)\n,\n      learningOutcomes,\n      githubUrl,\n      openRoles[]{ _key, title, experienceLevel },\n      lead->{ _id, name },\n      mentors[]->{ _id, name }\n    }\n': HOME_PROJECTS_QUERY_RESULT;
     '\n  *[_type == "project" && slug.current == $slug][0]{\n    \n  _id,\n  name,\n  "slug": slug.current,\n  status,\n  shortDescription,\n  techStack,\n  experienceLevel,\n  noExperienceRequired,\n  featured,\n  coverImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  "openRoleCount": count(openRoles)\n,\n    description,\n    screenshots[]{ _key, \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n    learningOutcomes,\n    openRoles[]{ _key, title, description, experienceLevel, learningOutcome },\n    githubUrl,\n    demoUrl,\n    discussionUrl,\n    currentFocus,\n    latestMilestone,\n    startedAt,\n    completedAt,\n    lead->{ \n  _id,\n  name,\n  "slug": slug.current,\n  photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  shortBio,\n  githubUrl,\n  linkedinUrl,\n  websiteUrl\n },\n    mentors[]->{ \n  _id,\n  name,\n  "slug": slug.current,\n  photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  shortBio,\n  githubUrl,\n  linkedinUrl,\n  websiteUrl\n },\n    contributors[]->{ _id, name, githubUrl },\n    seo { \n  metaTitle,\n  metaDescription,\n  shareImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n }\n  }\n': PROJECT_BY_SLUG_QUERY_RESULT;
     '\n  *[_type == "project" && defined(slug.current)]{ "slug": slug.current }\n': PROJECT_SLUGS_QUERY_RESULT;
     '\n  *[_type == "resource"] | order(featured desc, publishedAt desc){\n    \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n,\n    event->{ _id, title, "slug": slug.current }\n  }\n': RESOURCES_QUERY_RESULT;
     '\n  *[_type == "resource" && resourceType == $resourceType] | order(publishedAt desc){\n    \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n\n  }\n': RESOURCES_BY_TYPE_QUERY_RESULT;
     '\n  *[_type == "resource" && slug.current == $slug][0]{\n    \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n,\n    updatedAt,\n    "fileName": file.asset->originalFilename,\n    "fileSize": file.asset->size,\n    author->{ \n  _id,\n  name,\n  "slug": slug.current,\n  photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  shortBio,\n  githubUrl,\n  linkedinUrl,\n  websiteUrl\n },\n    event->{ _id, title, "slug": slug.current, startsAt },\n    relatedResources[]->{ \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n }\n  }\n': RESOURCE_BY_SLUG_QUERY_RESULT;
     '\n  *[_type == "resource" && defined(slug.current)]{ "slug": slug.current }\n': RESOURCE_SLUGS_QUERY_RESULT;
-    '\n  *[_id == "siteSettings"][0]{\n    clubName,\n    shortName,\n    description,\n    meetingInfo,\n    contactEmail,\n    discordUrl,\n    githubUrl,\n    teamsUrl,\n    footerNote,\n    socialLinks[]{ _key, platform, label, url },\n    facultyAdvisor->{\n      _id,\n      name,\n      email,\n      photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n    },\n    seo { \n  metaTitle,\n  metaDescription,\n  shareImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n }\n  }\n': SITE_SETTINGS_QUERY_RESULT;
+    '\n  *[_type == "siteSettings" && _id == "siteSettings"][0]{\n    clubName,\n    shortName,\n    description,\n    meetingInfo,\n    contactEmail,\n    discordUrl,\n    githubUrl,\n    teamsUrl,\n    footerNote,\n    socialLinks[]{ _key, platform, label, url },\n    facultyAdvisor->{\n      _id,\n      name,\n      email,\n      photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n    },\n    seo { \n  metaTitle,\n  metaDescription,\n  shareImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n }\n  }\n': SITE_SETTINGS_QUERY_RESULT;
   }
 }
