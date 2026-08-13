@@ -16,6 +16,25 @@ export const RECRUITING_PROJECTS_QUERY = defineQuery(/* groq */ `
   }
 `)
 
+/**
+ * Recruiting projects for the homepage preview.
+ *
+ * The card fragment alone is not enough here: the approved design shows the
+ * open roles, the lead and mentor, and the "what you'll learn" line, so those
+ * are projected too rather than being invented in the component.
+ */
+export const HOME_PROJECTS_QUERY = defineQuery(/* groq */ `
+  *[_type == "project" && status in ["recruiting", "active"]]
+    | order(select(status == "recruiting" => 0, 1) asc, featured desc, _createdAt desc)[0...2]{
+      ${projectCardFragment},
+      learningOutcomes,
+      githubUrl,
+      openRoles[]{ _key, title, experienceLevel },
+      lead->{ _id, name },
+      mentors[]->{ _id, name }
+    }
+`)
+
 export const PROJECT_BY_SLUG_QUERY = defineQuery(/* groq */ `
   *[_type == "project" && slug.current == $slug][0]{
     ${projectCardFragment},

@@ -158,3 +158,66 @@ export function formatClubTime(iso: string | null | undefined): string {
     timeStyle: 'short',
   })
 }
+
+/** "Thu, Sep 18, 2026" in club time — the long form used on event pages. */
+export function formatClubDateLong(iso: string | null | undefined): string {
+  if (!iso) return 'Date to be announced'
+  const instant = new Date(iso)
+  if (Number.isNaN(instant.getTime())) return 'Date to be announced'
+
+  return instant.toLocaleDateString('en-US', {
+    timeZone: CLUB_TIME_ZONE,
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+/** The three pieces of the stacked date block: `THU` / `18` / `SEP`. */
+export type ClubDateParts = { weekday: string; day: string; month: string }
+
+/**
+ * Uppercase calendar parts in club time.
+ *
+ * The design's date blocks show the weekday and month as mono labels above and
+ * below a large day number, so they are formatted separately rather than being
+ * pulled apart from a combined string.
+ */
+export function formatClubDateParts(iso: string | null | undefined): ClubDateParts | null {
+  if (!iso) return null
+  const instant = new Date(iso)
+  if (Number.isNaN(instant.getTime())) return null
+
+  const format = (options: Intl.DateTimeFormatOptions) =>
+    instant.toLocaleDateString('en-US', { timeZone: CLUB_TIME_ZONE, ...options })
+
+  return {
+    weekday: format({ weekday: 'short' }).toUpperCase(),
+    day: format({ day: '2-digit' }),
+    month: format({ month: 'short' }).toUpperCase(),
+  }
+}
+
+/**
+ * "6:00 – 7:30 PM" in club time, collapsing the shared meridiem.
+ *
+ * Falls back to the start time alone when an event has no end, and to an empty
+ * string when it has no usable start — callers decide what to show instead.
+ */
+export function formatClubTimeRange(
+  startIso: string | null | undefined,
+  endIso?: string | null,
+): string {
+  const start = formatClubTime(startIso)
+  if (!start) return ''
+
+  const end = formatClubTime(endIso)
+  if (!end) return start
+
+  const [startClock, startMeridiem] = start.split(' ')
+  const [, endMeridiem] = end.split(' ')
+
+  // "6:00 – 7:30 PM" when both sides share AM/PM, "11:30 AM – 1:00 PM" when not.
+  return startMeridiem === endMeridiem ? `${startClock} – ${end}` : `${start} – ${end}`
+}

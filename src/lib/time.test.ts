@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { clubInputToIso, formatClubDateTime, isoToClubInput } from './time.ts'
+import {
+  clubInputToIso,
+  formatClubDateLong,
+  formatClubDateParts,
+  formatClubDateTime,
+  formatClubTimeRange,
+  isoToClubInput,
+} from './time.ts'
 
 /**
  * Timezone regressions are silent and expensive: a wrong conversion moves a
@@ -47,4 +54,37 @@ test('display helpers render in club time, not the runtime timezone', () => {
   assert.equal(formatClubDateTime('2026-09-04T22:00:00.000Z'), 'Sep 4, 2026, 6:00 PM')
   assert.equal(formatClubDateTime(undefined), 'No date set')
   assert.equal(isoToClubInput(null), '')
+})
+
+test('the date block reads the club-time calendar day, not the UTC one', () => {
+  // 2026-09-19 01:00 UTC is still Friday the 18th at 9pm in Fort Myers, so a
+  // late event must not appear in the archive under the following day.
+  assert.deepEqual(formatClubDateParts('2026-09-19T01:00:00.000Z'), {
+    weekday: 'FRI',
+    day: '18',
+    month: 'SEP',
+  })
+  assert.equal(formatClubDateParts(null), null)
+  assert.equal(formatClubDateParts('not a date'), null)
+})
+
+test('the long date names the weekday in club time', () => {
+  assert.equal(formatClubDateLong('2026-09-18T22:00:00.000Z'), 'Fri, Sep 18, 2026')
+  assert.equal(formatClubDateLong(undefined), 'Date to be announced')
+})
+
+test('a time range collapses a shared meridiem and keeps a crossing one', () => {
+  assert.equal(
+    formatClubTimeRange('2026-09-18T22:00:00.000Z', '2026-09-18T23:30:00.000Z'),
+    '6:00 – 7:30 PM',
+  )
+  assert.equal(
+    formatClubTimeRange('2026-09-18T15:30:00.000Z', '2026-09-18T17:00:00.000Z'),
+    '11:30 AM – 1:00 PM',
+  )
+})
+
+test('a time range degrades to the start alone, then to nothing', () => {
+  assert.equal(formatClubTimeRange('2026-09-18T22:00:00.000Z', null), '6:00 PM')
+  assert.equal(formatClubTimeRange(null, '2026-09-18T23:30:00.000Z'), '')
 })
