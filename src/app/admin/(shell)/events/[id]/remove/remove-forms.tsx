@@ -41,10 +41,18 @@ export function RemoveEventForms({
   const confirmed = confirmation.trim() === eventTitle.trim()
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="flex flex-col gap-3 rounded-lg border p-4">
-        <h2 className="font-medium">Cancel the event</h2>
-        <p className="text-muted-foreground text-sm">
+    <div className="flex flex-col gap-4">
+      <section className="border-rule-card flex flex-col gap-3 rounded-lg border bg-white p-4 sm:p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="font-display text-ink text-[17px] font-bold tracking-[-0.01em]">
+            Cancel the event
+          </h2>
+          <span className="text-club-dark bg-club-surface-tint inline-flex items-center gap-1 rounded px-2 py-[3px] font-mono text-[10px] tracking-[0.12em] uppercase">
+            <span aria-hidden="true">↺</span>
+            Reversible
+          </span>
+        </div>
+        <p className="text-ink-soft text-[13.5px] leading-relaxed">
           Sets the status to Cancelled. It disappears from upcoming listings on the website but stays
           on record, along with anything linked to it. This is reversible — set the status back to
           Scheduled at any time.
@@ -53,24 +61,34 @@ export function RemoveEventForms({
         {canCancel ? (
           <form action={cancelAction}>
             <input name="id" type="hidden" value={eventId} />
-            <Button disabled={cancelPending} type="submit" variant="outline">
+            <Button className="self-start" disabled={cancelPending} type="submit" variant="outline">
               {cancelPending ? 'Cancelling…' : 'Cancel this event'}
             </Button>
           </form>
         ) : (
-          <p className="text-muted-foreground text-sm">This event is already cancelled.</p>
+          <p className="text-ink-faint text-[13px]">This event is already cancelled.</p>
         )}
 
         {cancelResult?.status === 'error' ? (
-          <p className="text-destructive text-sm font-medium" role="alert">
+          <p className="text-destructive text-[13px] font-semibold" role="alert">
             {cancelResult.message}
           </p>
         ) : null}
       </section>
 
-      <section className="border-destructive/30 flex flex-col gap-3 rounded-lg border p-4">
-        <h2 className="font-medium">Delete permanently</h2>
-        <p className="text-muted-foreground text-sm">
+      {/* Deliberately heavier than the block above: tinted field, red rule and a
+          solid red button, so the two options cannot be confused at a glance. */}
+      <section className="border-destructive/35 bg-destructive/[0.035] flex flex-col gap-3 rounded-lg border border-l-4 p-4 sm:p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="font-display text-destructive text-[17px] font-bold tracking-[-0.01em]">
+            Delete permanently
+          </h2>
+          <span className="text-destructive bg-destructive/10 inline-flex items-center gap-1 rounded px-2 py-[3px] font-mono text-[10px] tracking-[0.12em] uppercase">
+            <span aria-hidden="true">✕</span>
+            No undo
+          </span>
+        </div>
+        <p className="text-ink-body text-[13.5px] leading-relaxed">
           Removes the event from Sanity for good. There is no undo.
         </p>
 
@@ -78,22 +96,26 @@ export function RemoveEventForms({
           <form action={deleteAction} className="flex flex-col gap-3">
             <input name="id" type="hidden" value={eventId} />
 
-            <label className="flex flex-col gap-1.5 text-sm" htmlFor="confirm-title">
-              <span className="font-medium">
-                Type the event title to confirm: <span className="font-normal">{eventTitle}</span>
-              </span>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-ink text-[13px] font-semibold" htmlFor="confirm-title">
+                Type the event title to confirm
+              </label>
+              <p className="text-ink-soft font-mono text-[12px]" id="confirm-title-hint">
+                {eventTitle}
+              </p>
               <input
+                aria-describedby="confirm-title-hint"
                 autoComplete="off"
-                className="bg-background focus-visible:border-ring focus-visible:ring-ring/50 min-h-11 w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-3 focus-visible:outline-none"
+                className="border-input focus-visible:border-destructive focus-visible:ring-destructive/25 min-h-11 w-full max-w-md rounded-md border bg-white px-3 py-2 text-sm focus-visible:ring-3 focus-visible:outline-none"
                 id="confirm-title"
                 onChange={(event) => setConfirmation(event.target.value)}
                 type="text"
                 value={confirmation}
               />
-            </label>
+            </div>
 
             <Button
-              className="self-start"
+              className="bg-destructive hover:bg-destructive/90 self-start text-white disabled:opacity-40"
               disabled={!confirmed || deletePending}
               type="submit"
               variant="destructive"
@@ -102,13 +124,13 @@ export function RemoveEventForms({
             </Button>
           </form>
         ) : (
-          <p className="text-sm" role="note">
+          <p className="border-rule-strong text-ink-body rounded-md border border-dashed bg-white px-3 py-2.5 text-[13px]" role="note">
             {blockedReason ?? 'This event cannot be deleted here.'}
           </p>
         )}
 
         {deleteResult?.status === 'error' ? (
-          <p className="text-destructive text-sm font-medium" role="alert">
+          <p className="text-destructive text-[13px] font-semibold" role="alert">
             {deleteResult.message}
           </p>
         ) : null}

@@ -9,9 +9,28 @@ import type { Capability } from '@/auth/permissions'
  * management admin-only, this file is the only place that changes.
  */
 
+/**
+ * Icons are named here and resolved to components inside `AdminNav`.
+ *
+ * The sections are built on the server and handed to a Client Component, so
+ * every field has to be serializable — a component reference cannot cross that
+ * boundary. Keeping this module free of React also keeps it unit-testable.
+ */
+export type AdminNavIcon =
+  | 'dashboard'
+  | 'events'
+  | 'projects'
+  | 'resources'
+  | 'opportunities'
+  | 'people'
+  | 'settings'
+  | 'studio'
+
 export type AdminNavItem = {
   href: string
   label: string
+  /** Decorative: the label is always present, so the icon is `aria-hidden`. */
+  icon: AdminNavIcon
   /** Required to see the link at all. Defaults to `admin:access`. */
   capability?: Capability
   /** Marks a module whose management screens land in a later phase. */
@@ -28,17 +47,30 @@ export type AdminNavSection = {
 export const ADMIN_NAV: AdminNavSection[] = [
   {
     title: 'Overview',
-    items: [{ href: '/admin', label: 'Dashboard' }],
+    items: [{ href: '/admin', label: 'Dashboard', icon: 'dashboard' }],
   },
   {
     title: 'Content',
     items: [
-      { href: '/admin/events', label: 'Events', capability: 'content:write' },
-      { href: '/admin/projects', label: 'Projects', capability: 'content:write', comingSoon: true },
-      { href: '/admin/resources', label: 'Resources', capability: 'content:write', comingSoon: true },
+      { href: '/admin/events', label: 'Events', icon: 'events', capability: 'content:write' },
+      {
+        href: '/admin/projects',
+        label: 'Projects',
+        icon: 'projects',
+        capability: 'content:write',
+        comingSoon: true,
+      },
+      {
+        href: '/admin/resources',
+        label: 'Resources',
+        icon: 'resources',
+        capability: 'content:write',
+        comingSoon: true,
+      },
       {
         href: '/admin/opportunities',
         label: 'Opportunities',
+        icon: 'opportunities',
         capability: 'content:write',
         comingSoon: true,
       },
@@ -47,13 +79,19 @@ export const ADMIN_NAV: AdminNavSection[] = [
   {
     title: 'Club',
     items: [
-      { href: '/admin/people', label: 'People', capability: 'content:write', comingSoon: true },
-      { href: '/admin/settings', label: 'Site settings', capability: 'content:write', comingSoon: true },
+      { href: '/admin/people', label: 'People', icon: 'people', capability: 'content:write', comingSoon: true },
+      {
+        href: '/admin/settings',
+        label: 'Site settings',
+        icon: 'settings',
+        capability: 'content:write',
+        comingSoon: true,
+      },
     ],
   },
   {
     title: 'Advanced',
-    items: [{ href: '/studio', label: 'Advanced CMS', external: true }],
+    items: [{ href: '/studio', label: 'Advanced CMS', icon: 'studio', external: true }],
   },
 ]
 

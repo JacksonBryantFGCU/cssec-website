@@ -211,6 +211,95 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/**
+ * CSSEC admin tokens.
+ *
+ * `/admin` is built on the shadcn semantic names — `bg-primary`,
+ * `border-border`, `text-muted-foreground` — and `@theme inline` inlines those
+ * variables into the utilities themselves rather than resolving them once at
+ * `:root`. That is what lets `.dark` above re-theme its descendants, and it is
+ * the same mechanism used here: redefining the variables under `.admin-root`
+ * re-points every existing admin component at the CSSEC palette without
+ * touching a single component's classes.
+ *
+ * Isolation is structural. `/studio` and the public site never carry
+ * `.admin-root`, so nothing below can reach them; and because these are the
+ * shadcn names rather than the `--color-*` public ones, the public tokens are
+ * untouched in turn.
+ *
+ * The values are the public palette, chosen for a calmer register: navy is the
+ * sidebar rather than every masthead, green marks action rather than identity,
+ * and surfaces stay paper-white so dense content reads first.
+ */
+.admin-root {
+  /* Controls and cards are white; the page canvas is painted `bg-paper`. */
+  --background: #ffffff;
+  --foreground: var(--color-ink);
+  --card: #ffffff;
+  --card-foreground: var(--color-ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-ink);
+
+  /* Action. Dark ink on green is the public site's own pairing (5.2:1), and
+     shadcn's `/80` hover only lightens the field, so contrast rises. */
+  --primary: var(--color-club-green);
+  --primary-foreground: var(--color-club-green-ink);
+
+  --secondary: var(--color-club-surface);
+  --secondary-foreground: var(--color-club-dark);
+  --muted: var(--color-rule-fill);
+  --muted-foreground: var(--color-ink-soft);
+  --accent: var(--color-club-surface-soft);
+  --accent-foreground: var(--color-ink);
+
+  /* A brick red that sits with navy and green rather than fighting them.
+     7.6:1 as text on white. */
+  --destructive: #9c2b16;
+
+  --border: var(--color-rule-card);
+  /* Control borders carry meaning, so they meet 3:1 against white — the
+     hairline rules used between rows would not. */
+  --input: var(--color-ink-label);
+  --ring: var(--color-club-green);
+
+  /* Squarer than the public site: utilitarian, and less rounding to stack up
+     across a dense screen. */
+  --radius: 0.5rem;
+
+  --sidebar: var(--color-navy);
+  --sidebar-foreground: var(--color-navy-fg);
+  --sidebar-primary: var(--color-club-green);
+  --sidebar-primary-foreground: var(--color-club-green-ink);
+  --sidebar-accent: var(--color-navy-raised);
+  --sidebar-accent-foreground: var(--color-navy-bright);
+  --sidebar-border: var(--color-navy-line);
+  --sidebar-ring: var(--color-club-green);
+}
+
+@layer base {
+  /* The green focus ring, matching the public site. Utilities win over base,
+     so shadcn's own `outline-none` + `ring-3` treatment on buttons still
+     applies — this covers everything that has no ring of its own. */
+  .admin-root :focus-visible {
+    outline: 2px solid var(--color-club-green);
+    outline-offset: 2px;
+  }
+
+  /* On navy, green-on-navy is too dim to find; the ring goes light instead. */
+  .admin-sidebar :focus-visible {
+    outline-color: var(--color-navy-bright);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .admin-root *,
+    .admin-root *::before,
+    .admin-root *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
