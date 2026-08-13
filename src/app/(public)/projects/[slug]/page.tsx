@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
@@ -13,6 +14,7 @@ import {
   projectStatusLabel,
   PROJECT_STATUS_FACET,
 } from '@/lib/projects/view-model'
+import { sanityImageProps } from '@/sanity/lib/image'
 import { PUBLIC_REVALIDATE_SECONDS, publicClient } from '@/sanity/lib/public-client'
 import { PROJECT_BY_SLUG_QUERY, PROJECT_SLUGS_QUERY } from '@/sanity/queries/projects'
 import { EXPERIENCE_LEVELS, titleForValue } from '@/sanity/schemaTypes/shared/options'
@@ -75,6 +77,18 @@ export default async function ProjectPage({ params }: PageProps<'/projects/[slug
   const mentors = project.mentors ?? []
   const contributors = project.contributors ?? []
   const joinUrl = project.discussionUrl ?? links.discordUrl
+
+  // The approved design has exactly one image slot on this page — a single
+  // "screenshot / demo still" above the description — and none at all on the
+  // index or the homepage, where project rows are deliberately text-first.
+  // So this is the only place a project picture appears, and a gallery of the
+  // Studio-managed `screenshots` array stays deferred: the first screenshot is
+  // used only as the fallback when no cover image has been set.
+  const cover = sanityImageProps(project.coverImage ?? project.screenshots?.[0] ?? null, {
+    width: 1200,
+    height: 460,
+    alt: project.coverImage?.alt ?? `${project.name ?? 'The project'} — screenshot`,
+  })
 
   return (
     <>
@@ -157,6 +171,20 @@ export default async function ProjectPage({ params }: PageProps<'/projects/[slug
 
       <div className="grid bg-white lg:grid-cols-[1fr_356px]">
         <div className="border-rule flex flex-col gap-7 px-4 py-7 sm:px-8 sm:py-[30px_40px] lg:border-r">
+          {cover ? (
+            <Image
+              alt={cover.alt}
+              blurDataURL={cover.blurDataURL}
+              className="border-rule w-full rounded-[10px] border object-cover"
+              height={cover.height}
+              placeholder={cover.blurDataURL ? 'blur' : undefined}
+              // The main column is 1fr beside a fixed 356px rail from `lg` up.
+              sizes="(min-width: 1024px) calc(100vw - 420px), 100vw"
+              src={cover.src}
+              width={cover.width}
+            />
+          ) : null}
+
           {project.description ? (
             <section className="flex flex-col gap-3">
               <h2 className="font-display text-ink m-0 text-[19px] font-semibold">

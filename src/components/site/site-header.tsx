@@ -58,7 +58,9 @@ export function SiteHeader({ links }: { links: SiteLinks }) {
 
         <Link
           className="bg-club-green text-club-green-ink hover:bg-club-green-hover hidden shrink-0 rounded-lg px-4 py-[9px] text-[13.5px] font-bold whitespace-nowrap transition-colors lg:inline-flex"
-          href="/about"
+          // There is no `/join` route by design; the About page's join section
+          // is the destination every "Join CSSEC" control shares.
+          href="/about#join"
         >
           Join CSSEC
         </Link>

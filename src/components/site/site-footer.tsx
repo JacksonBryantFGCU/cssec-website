@@ -95,9 +95,9 @@ export function SiteFooter({ links }: { links: SiteLinks }) {
         <p className="text-navy-quiet text-[13px]">
           CSSEC — {links.clubName || SITE_FULL_NAME} · {SITE_AFFILIATION}
         </p>
-        {links.advisorName ? (
+        {links.advisor ? (
           <p className="text-navy-whisper font-mono text-[11px] tracking-[0.05em] uppercase">
-            Advisor {links.advisorName}
+            Advisor {links.advisor.name}
           </p>
         ) : null}
         {links.footerNote ? (

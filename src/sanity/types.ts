@@ -1742,9 +1742,149 @@ export type RESOURCE_SLUGS_QUERY_RESULT = Array<{
   slug: string | null;
 }>;
 
+// Source: src/sanity/queries/search.ts
+// Variable: SEARCH_QUERY
+// Query: *[    (      _type == "event" && status != "cancelled" && defined(slug.current) && (        title match $terms ||        summary match $terms ||        eventType match $terms ||        topics match $terms      )    ) || (      _type == "project" && defined(slug.current) && (        name match $terms ||        shortDescription match $terms ||        techStack match $terms      )    ) || (      _type == "resource" && defined(slug.current) && (        title match $terms ||        description match $terms ||        resourceType match $terms ||        topics match $terms      )    ) || (      _type == "opportunity" && (        title match $terms ||        organization match $terms ||        description match $terms ||        skills match $terms      )    )  ] | order(_updatedAt desc) [0...$limit] {    _id,    _type,    "slug": slug.current,    "title": coalesce(title, name),    "summary": coalesce(summary, shortDescription, description),    "keywords": coalesce(topics, techStack, skills),    "kind": coalesce(eventType, resourceType, opportunityType, status),    organization,    startsAt,    deadline,    publishedAt,    applicationUrl  }
+export type SEARCH_QUERY_RESULT = Array<
+  | {
+      _id: string;
+      _type: "event";
+      slug: string | null;
+      title: string | null;
+      summary:
+        | Array<{
+            children?: Array<{
+              marks?: Array<string>;
+              text?: string;
+              _type: "span";
+              _key: string;
+            }>;
+            style?:
+              "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "normal";
+            listItem?: "bullet" | "number";
+            markDefs?: Array<{
+              href?: string;
+              _type: "link";
+              _key: string;
+            }>;
+            level?: number;
+            _type: "block";
+            _key: string;
+          }>
+        | string
+        | null;
+      keywords: Array<string> | null;
+      kind:
+        | "cancelled"
+        | "career"
+        | "completed"
+        | "hackathon"
+        | "meeting"
+        | "scheduled"
+        | "social"
+        | "speaker"
+        | "studySession"
+        | "workshop"
+        | null;
+      organization: null;
+      startsAt: string | null;
+      deadline: null;
+      publishedAt: null;
+      applicationUrl: null;
+    }
+  | {
+      _id: string;
+      _type: "opportunity";
+      slug: null;
+      title: string | null;
+      summary: string | null;
+      keywords: Array<string> | null;
+      kind:
+        | "campus"
+        | "competition"
+        | "fullTime"
+        | "hackathon"
+        | "internship"
+        | "research"
+        | "scholarship"
+        | null;
+      organization: string | null;
+      startsAt: null;
+      deadline: string | null;
+      publishedAt: null;
+      applicationUrl: string | null;
+    }
+  | {
+      _id: string;
+      _type: "project";
+      slug: string | null;
+      title: string | null;
+      summary:
+        | Array<{
+            children?: Array<{
+              marks?: Array<string>;
+              text?: string;
+              _type: "span";
+              _key: string;
+            }>;
+            style?:
+              "blockquote" | "h1" | "h2" | "h3" | "h4" | "h5" | "h6" | "normal";
+            listItem?: "bullet" | "number";
+            markDefs?: Array<{
+              href?: string;
+              _type: "link";
+              _key: string;
+            }>;
+            level?: number;
+            _type: "block";
+            _key: string;
+          }>
+        | string
+        | null;
+      keywords: Array<string> | null;
+      kind:
+        | "active"
+        | "archived"
+        | "idea"
+        | "recruiting"
+        | "shipped"
+        | "testing"
+        | null;
+      organization: null;
+      startsAt: null;
+      deadline: null;
+      publishedAt: null;
+      applicationUrl: null;
+    }
+  | {
+      _id: string;
+      _type: "resource";
+      slug: string | null;
+      title: string | null;
+      summary: string | null;
+      keywords: Array<string> | null;
+      kind:
+        | "career"
+        | "cheatSheet"
+        | "guide"
+        | "interviewPrep"
+        | "recording"
+        | "repository"
+        | "slides"
+        | "tutorial"
+        | "workshop"
+        | null;
+      organization: null;
+      startsAt: null;
+      deadline: null;
+      publishedAt: string | null;
+      applicationUrl: null;
+    }
+>;
+
 // Source: src/sanity/queries/siteSettings.ts
 // Variable: SITE_SETTINGS_QUERY
-// Query: *[_type == "siteSettings" && _id == "siteSettings"][0]{    clubName,    shortName,    description,    meetingInfo,    contactEmail,    discordUrl,    githubUrl,    teamsUrl,    footerNote,    socialLinks[]{ _key, platform, label, url },    facultyAdvisor->{      _id,      name,      email,      photo {   asset->{ _id, url, metadata { lqip, dimensions } },  alt,  hotspot,  crop }    },    seo {   metaTitle,  metaDescription,  shareImage {   asset->{ _id, url, metadata { lqip, dimensions } },  alt,  hotspot,  crop } }  }
+// Query: *[_type == "siteSettings" && _id == "siteSettings"][0]{    clubName,    shortName,    description,    meetingInfo,    contactEmail,    discordUrl,    githubUrl,    teamsUrl,    footerNote,    socialLinks[]{ _key, platform, label, url },    facultyAdvisor->{      _id,      name,      email,      shortBio,      photo {   asset->{ _id, url, metadata { lqip, dimensions } },  alt,  hotspot,  crop }    },    seo {   metaTitle,  metaDescription,  shareImage {   asset->{ _id, url, metadata { lqip, dimensions } },  alt,  hotspot,  crop } }  }
 export type SITE_SETTINGS_QUERY_RESULT = {
   clubName: string | null;
   shortName: string | null;
@@ -1773,6 +1913,7 @@ export type SITE_SETTINGS_QUERY_RESULT = {
     _id: string;
     name: string | null;
     email: string | null;
+    shortBio: string | null;
     photo: {
       asset: {
         _id: string;
@@ -1850,6 +1991,7 @@ declare module "@sanity/client" {
     '\n  *[_type == "resource" && resourceType == $resourceType] | order(publishedAt desc){\n    \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n\n  }\n': RESOURCES_BY_TYPE_QUERY_RESULT;
     '\n  *[_type == "resource" && slug.current == $slug][0]{\n    \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n,\n    updatedAt,\n    "fileName": file.asset->originalFilename,\n    "fileSize": file.asset->size,\n    author->{ \n  _id,\n  name,\n  "slug": slug.current,\n  photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  shortBio,\n  githubUrl,\n  linkedinUrl,\n  websiteUrl\n },\n    event->{ _id, title, "slug": slug.current, startsAt },\n    relatedResources[]->{ \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n }\n  }\n': RESOURCE_BY_SLUG_QUERY_RESULT;
     '\n  *[_type == "resource" && defined(slug.current)]{ "slug": slug.current }\n': RESOURCE_SLUGS_QUERY_RESULT;
-    '\n  *[_type == "siteSettings" && _id == "siteSettings"][0]{\n    clubName,\n    shortName,\n    description,\n    meetingInfo,\n    contactEmail,\n    discordUrl,\n    githubUrl,\n    teamsUrl,\n    footerNote,\n    socialLinks[]{ _key, platform, label, url },\n    facultyAdvisor->{\n      _id,\n      name,\n      email,\n      photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n    },\n    seo { \n  metaTitle,\n  metaDescription,\n  shareImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n }\n  }\n': SITE_SETTINGS_QUERY_RESULT;
+    '\n  *[\n    (\n      _type == "event" && status != "cancelled" && defined(slug.current) && (\n        title match $terms ||\n        summary match $terms ||\n        eventType match $terms ||\n        topics match $terms\n      )\n    ) || (\n      _type == "project" && defined(slug.current) && (\n        name match $terms ||\n        shortDescription match $terms ||\n        techStack match $terms\n      )\n    ) || (\n      _type == "resource" && defined(slug.current) && (\n        title match $terms ||\n        description match $terms ||\n        resourceType match $terms ||\n        topics match $terms\n      )\n    ) || (\n      _type == "opportunity" && (\n        title match $terms ||\n        organization match $terms ||\n        description match $terms ||\n        skills match $terms\n      )\n    )\n  ] | order(_updatedAt desc) [0...$limit] {\n    _id,\n    _type,\n    "slug": slug.current,\n    "title": coalesce(title, name),\n    "summary": coalesce(summary, shortDescription, description),\n    "keywords": coalesce(topics, techStack, skills),\n    "kind": coalesce(eventType, resourceType, opportunityType, status),\n    organization,\n    startsAt,\n    deadline,\n    publishedAt,\n    applicationUrl\n  }\n': SEARCH_QUERY_RESULT;
+    '\n  *[_type == "siteSettings" && _id == "siteSettings"][0]{\n    clubName,\n    shortName,\n    description,\n    meetingInfo,\n    contactEmail,\n    discordUrl,\n    githubUrl,\n    teamsUrl,\n    footerNote,\n    socialLinks[]{ _key, platform, label, url },\n    facultyAdvisor->{\n      _id,\n      name,\n      email,\n      shortBio,\n      photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n    },\n    seo { \n  metaTitle,\n  metaDescription,\n  shareImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n }\n  }\n': SITE_SETTINGS_QUERY_RESULT;
   }
 }

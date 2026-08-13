@@ -1,5 +1,6 @@
 import 'server-only'
 
+import type { SanityImageValue } from '@/sanity/lib/image'
 import { SITE_SETTINGS_QUERY } from '@/sanity/queries/siteSettings'
 import { PUBLIC_REVALIDATE_SECONDS, publicClient } from '@/sanity/lib/public-client'
 
@@ -11,6 +12,21 @@ import { PUBLIC_REVALIDATE_SECONDS, publicClient } from '@/sanity/lib/public-cli
  * than to an invented URL — means an unconfigured setting renders no link at
  * all instead of a dead one.
  */
+/**
+ * The faculty advisor, as the public site needs them.
+ *
+ * The advisor is a `person` reference on site settings rather than an
+ * `officerRole`, because they are not elected and hold no term — so they are
+ * carried separately here and rendered as their own entry on `/about` rather
+ * than being folded into the officer board. Their email is deliberately not
+ * exposed: the club's own contact address is the public route to the officers.
+ */
+export type FacultyAdvisor = {
+  name: string
+  shortBio: string | null
+  photo: SanityImageValue
+}
+
 export type SiteLinks = {
   clubName: string
   shortName: string
@@ -20,7 +36,7 @@ export type SiteLinks = {
   discordUrl: string | null
   githubUrl: string | null
   footerNote: string | null
-  advisorName: string | null
+  advisor: FacultyAdvisor | null
 }
 
 const FALLBACK: SiteLinks = {
@@ -32,7 +48,7 @@ const FALLBACK: SiteLinks = {
   discordUrl: null,
   githubUrl: null,
   footerNote: null,
-  advisorName: null,
+  advisor: null,
 }
 
 export async function getSiteLinks(): Promise<SiteLinks> {
@@ -53,6 +69,12 @@ export async function getSiteLinks(): Promise<SiteLinks> {
     discordUrl: settings.discordUrl ?? null,
     githubUrl: settings.githubUrl ?? null,
     footerNote: settings.footerNote ?? null,
-    advisorName: settings.facultyAdvisor?.name ?? null,
+    advisor: settings.facultyAdvisor?.name
+      ? {
+          name: settings.facultyAdvisor.name,
+          shortBio: settings.facultyAdvisor.shortBio ?? null,
+          photo: settings.facultyAdvisor.photo ?? null,
+        }
+      : null,
   }
 }
