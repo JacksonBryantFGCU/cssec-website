@@ -11,7 +11,7 @@ import {
   parseEventForm,
   type EventInput,
 } from '@/lib/events/input-schema'
-import { slugify, uniqueSlug } from '@/lib/events/slug'
+import { slugify, uniqueSlug } from '@/lib/admin/slug'
 import { revalidateEventContent } from '@/lib/revalidate'
 import { getAdminClient } from '@/sanity/lib/admin-client'
 import { getWriteClient } from '@/sanity/lib/write-client'

@@ -16,8 +16,8 @@ import { revalidatePath } from 'next/cache'
  * *other* documents' pages, none of which a single-URL invalidation would
  * catch.
  *
- * Only Events has admin mutations today. The rest are ready for the admin
- * phase that follows, and are already correct for anything written in Studio.
+ * Every content type is now mutable from `/admin`, and each mutation calls the
+ * helper for its type rather than naming routes itself.
  */
 
 /** The admin app itself, whose dashboard counts every one of these. */
@@ -59,4 +59,36 @@ export function revalidateOpportunityContent(): void {
   revalidateAdmin()
   revalidatePath('/')
   revalidatePath('/opportunities')
+}
+
+/**
+ * People and officer terms.
+ *
+ * The widest invalidation in this file, and deliberately so: a person is
+ * referenced from events, projects and resources, so renaming one changes text
+ * on almost every public route. `/about` carries the officer board, which is
+ * the other half of what this covers.
+ */
+export function revalidatePeopleContent(): void {
+  revalidateAdmin()
+  revalidatePath('/')
+  revalidatePath('/about')
+  revalidatePath('/events')
+  revalidatePath('/events/[slug]', 'page')
+  revalidatePath('/projects')
+  revalidatePath('/projects/[slug]', 'page')
+  revalidatePath('/resources')
+  revalidatePath('/resources/[slug]', 'page')
+}
+
+/**
+ * Global club information.
+ *
+ * Site settings feed the header, the footer and the default page metadata, so
+ * there is no route they do not reach — invalidating the whole public layout is
+ * the honest scope, and it happens a handful of times a year.
+ */
+export function revalidateSiteSettings(): void {
+  revalidateAdmin()
+  revalidatePath('/', 'layout')
 }

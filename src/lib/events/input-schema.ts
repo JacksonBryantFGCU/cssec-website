@@ -7,11 +7,21 @@ import {
   EVENT_TYPES,
   EXPERIENCE_LEVELS,
   LOCATION_TYPES,
-  type Option,
 } from '../../sanity/schemaTypes/shared/options.ts'
 import type { Event } from '../../sanity/types.ts'
+import {
+  checkbox,
+  fieldErrorsFrom,
+  optionalSlug,
+  optionalText,
+  optionalUrl,
+  optionValue,
+  referenceIdList,
+  stringList,
+} from '../admin/fields.ts'
 import { clubInputToIso } from '../time.ts'
-import { isValidSlug, slugify, SLUG_MAX_LENGTH } from './slug.ts'
+
+export { fieldErrorsFrom }
 
 /**
  * Validation for event input submitted from `/admin`.
@@ -33,38 +43,6 @@ type EventStatus = NonNullable<Event['status']>
 type EventType = NonNullable<Event['eventType']>
 type ExperienceLevel = NonNullable<Event['experienceLevel']>
 type LocationType = NonNullable<NonNullable<Event['location']>['locationType']>
-
-/** A required select, validated against the shared option list. */
-function optionValue<T extends string>(options: Option[], message: string) {
-  const allowed = options.map((option) => option.value)
-  return z.string().refine((value): value is T => allowed.includes(value), { message })
-}
-
-/** Optional free text: blank submits become `undefined`, not empty strings. */
-const optionalText = (max: number, message: string) =>
-  z
-    .string()
-    .trim()
-    .max(max, message)
-    .transform((value) => value || undefined)
-    .optional()
-
-/** Optional URL. Blank is fine; anything present must be a real http(s) URL. */
-const optionalUrl = (message: string) =>
-  z
-    .string()
-    .trim()
-    .transform((value) => value || undefined)
-    .optional()
-    .refine(
-      (value) => value === undefined || /^https?:\/\/\S+$/.test(value),
-      { message },
-    )
-
-/** HTML checkboxes submit "on" when checked and nothing at all when not. */
-const checkbox = z
-  .union([z.literal('on'), z.literal('true'), z.literal('false'), z.literal(''), z.undefined(), z.null()])
-  .transform((value) => value === 'on' || value === 'true')
 
 /** A club-time `datetime-local` value converted to the stored UTC instant. */
 const requiredClubDateTime = z
@@ -94,27 +72,6 @@ const optionalClubDateTime = z
   })
   .optional()
 
-/** Comma- or newline-separated text becomes a de-duplicated list. */
-const stringList = (max: number, message: string) =>
-  z
-    .string()
-    .transform((value) =>
-      Array.from(
-        new Set(
-          value
-            .split(/[\n,]/)
-            .map((entry) => entry.trim())
-            .filter(Boolean),
-        ),
-      ),
-    )
-    .refine((list) => list.length <= max, { message })
-
-/** Sanity document ids for the selected presenters. */
-const referenceIdList = z
-  .array(z.string().trim().regex(/^[A-Za-z0-9._-]+$/, 'Unrecognised selection.'))
-  .max(10, 'Select up to 10 presenters.')
-
 export const eventInputSchema = z
   .object({
     title: z
@@ -122,15 +79,7 @@ export const eventInputSchema = z
       .trim()
       .min(3, 'Give the event a title of at least 3 characters.')
       .max(120, 'Keep the title under 120 characters.'),
-    slug: z
-      .string()
-      .trim()
-      .max(SLUG_MAX_LENGTH, `Keep the URL under ${SLUG_MAX_LENGTH} characters.`)
-      .transform((value) => value || undefined)
-      .optional()
-      .refine((value) => value === undefined || isValidSlug(slugify(value)), {
-        message: 'Use letters, numbers and hyphens only.',
-      }),
+    slug: optionalSlug,
     status: optionValue<EventStatus>(EVENT_STATUSES, 'Choose a status.'),
     eventType: optionValue<EventType>(EVENT_TYPES, 'Choose an event type.'),
     startsAt: requiredClubDateTime,
@@ -152,7 +101,7 @@ export const eventInputSchema = z
     communityUrl: optionalUrl('Enter a full Discord or community link starting with https://'),
     recap: optionalText(1000, 'Keep the recap under 1000 characters.'),
     featured: checkbox,
-    presenters: referenceIdList,
+    presenters: referenceIdList(10, 'Select up to 10 presenters.'),
   })
   .superRefine((input, ctx) => {
     if (input.endsAt && input.endsAt < input.startsAt) {
@@ -207,20 +156,6 @@ export const EVENT_FORM_FIELDS = [
 ] as const
 
 export type EventFormField = (typeof EVENT_FORM_FIELDS)[number]
-
-/** Field-keyed messages, which is what the form needs to render errors inline. */
-export function fieldErrorsFrom(error: z.ZodError): Record<string, string> {
-  const errors: Record<string, string> = {}
-
-  for (const issue of error.issues) {
-    const key = issue.path[0]
-    const field = typeof key === 'string' ? key : '_form'
-    // Keep the first message per field: showing three at once helps nobody.
-    errors[field] ??= issue.message
-  }
-
-  return errors
-}
 
 /** Parses a submitted form into validated event input. */
 export function parseEventForm(formData: FormData) {

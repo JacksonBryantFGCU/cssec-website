@@ -92,11 +92,6 @@ export function AdminNav({
                       className={cn('size-4 shrink-0', active ? 'text-club-green-bright' : 'text-navy-quiet')}
                     />
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                    {item.comingSoon ? (
-                      <span className="border-navy-edge text-navy-whisper rounded border px-1.5 py-px font-mono text-[9px] tracking-[0.1em] uppercase">
-                        Soon
-                      </span>
-                    ) : null}
                     {item.external ? (
                       <span className="text-navy-quiet text-xs" aria-hidden="true">
                         ↗

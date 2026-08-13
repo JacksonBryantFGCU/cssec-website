@@ -7,7 +7,9 @@
  * (lowercase, ASCII, hyphen separated) and must stay stable, because changing
  * them later would change existing URLs.
  *
- * `maxLength: 96` mirrors the `slug` field options in the Sanity event schema.
+ * `maxLength: 96` mirrors the `slug` field options in every Sanity schema that
+ * has one — events, projects, resources and people all share these rules, which
+ * is why this module sits under `lib/admin` rather than beside one of them.
  */
 
 export const SLUG_MAX_LENGTH = 96

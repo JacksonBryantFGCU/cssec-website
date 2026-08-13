@@ -133,10 +133,14 @@ Two roles, stored in Clerk as `publicMetadata.role` on the user — no database,
 
 | Role | Can |
 | --- | --- |
-| `officer` | Access `/admin`, manage content (`admin:access`, `content:write`) |
-| `admin` | Everything an officer can, plus managing other officers (`officers:manage`) |
+| `officer` | Access `/admin` and manage all routine content — events, projects, resources, opportunities, people (`admin:access`, `content:write`) |
+| `admin` | Everything an officer can, plus officer terms (`officers:manage`) and site settings (`settings:manage`) |
 
-Roles and capabilities are defined once in `src/auth/roles.ts` and `src/auth/permissions.ts`. Never compare role strings inline — use `can(role, capability)`.
+The split is by **what a mistake costs the club**, not by seniority. A wrong event date shows up on one page and is fixed by editing it again. Who the website says is president, and the club's name, contact email and Discord invite, are different: one bad save changes every page at once, and the leadership record is what a future president inherits.
+
+Roles and capabilities are defined once in `src/auth/roles.ts` and `src/auth/permissions.ts`. Never compare role strings inline — use `can(role, capability)`. Moving a capability between roles is a change in `permissions.ts` alone.
+
+> A CSSEC role in Clerk is **not** the same thing as an officer term in Sanity. See [People vs. officer accounts](#people-vs-officer-accounts).
 
 ### Granting officer access
 
@@ -173,7 +177,7 @@ The typed shape of that claim lives in `src/auth/roles.ts`. Nothing breaks if it
 
 ### Sanity write security
 
-Mutations go through one path only: Server Action → `requireOfficer()` → Zod validation → `getWriteClient()` (`src/sanity/lib/write-client.ts`, guarded by `server-only`) → Content Lake. `SANITY_API_WRITE_TOKEN` is read only there, is never logged, and cannot appear in a browser bundle. See [Officer admin](#officer-admin-admin) for how the event actions apply this.
+Mutations go through one path only: Server Action → `requireOfficer()` → Zod validation → `getWriteClient()` (`src/sanity/lib/write-client.ts`, guarded by `server-only`) → Content Lake. `SANITY_API_WRITE_TOKEN` is read only there, is never logged, and cannot appear in a browser bundle. This includes **file and image uploads**: bytes travel inside the Server Action's multipart body and are handed to Sanity's asset API server-side, so there is no signed-URL step and no upload endpoint of our own that could be reached without a session. See [Officer admin](#officer-admin-admin).
 
 ### Local development
 
@@ -195,46 +199,75 @@ To verify the whole chain by hand:
 
 ### `/admin` or `/studio`?
 
+**`/admin` is where routine work happens. `/studio` is the advanced CMS.** An officer should be able to run the club's website for a whole year without opening Studio.
+
 | Use `/admin` | Use `/studio` |
 | --- | --- |
-| The everyday jobs: schedule an event, fix a room, cancel something, check what needs attention | Anything `/admin` does not cover yet |
-| Officers who should not have to learn a CMS | Long rich-text descriptions and setup instructions |
-| Guided forms with plain-language validation | SEO overrides, images, file uploads |
-| | Projects, resources, opportunities, people, site settings (until their admin screens land) |
-| | Deleting historical content, and any repair work |
+| Everything routine: schedule an event, add a project and its open roles, upload workshop slides, post an internship, add a person, hand over the officer board, change the club's contact email | Long rich-text descriptions and setup instructions (Portable Text) |
+| Officers who should not have to learn a CMS | Screenshot galleries and share images |
+| Guided forms with plain-language validation, and safe defaults for anything destructive | Files larger than 10 MB |
+| | Deleting something the admin's policy protects, and any reference repair |
 
-Both write to the same Sanity dataset, so the two are always consistent: an event created in `/admin` opens normally in Studio, and one created in Studio appears in `/admin`. Neither is a copy of the other.
+Both write to the same Sanity dataset, so the two are always consistent in **both directions**: a project created in `/admin` opens normally in Studio, and one created in Studio appears in `/admin`. Neither is a copy of the other, and neither owns a document.
+
+Where the admin manages only part of a document, it says so on the form and **patches only the fields it manages** — a Studio-authored description or screenshot gallery survives an admin save untouched.
+
+### What officers can manage in `/admin`
+
+| Module | Covered here | Stays in Studio |
+| --- | --- | --- |
+| **Events** | Title, status, type, dates, location, summary, experience level, prerequisites, topics, presenters, links, featured, recap | Rich-text description and setup instructions, SEO, related resources |
+| **Projects** | Name, status, descriptions, experience level, technologies, learning outcomes, lead/mentors/contributors, open roles, links, current focus, milestone, dates, featured, **cover image** | Rich-text full description, **screenshot gallery**, SEO |
+| **Resources** | Title, type, description, topics, experience level, source event, author, external/GitHub links, **file upload (≤ 10 MB)**, published and reviewed dates, related resources, featured | Files over 10 MB |
+| **Opportunities** | Everything — title, organization, type, description, location, work arrangement, application link, deadline, posted date, skills, majors, featured | — |
+| **People** | Name, **photo**, short bio, email, GitHub, LinkedIn, website | — |
+| **Officer terms** (admin) | Person, position, academic year, currently serving, display order | — |
+| **Site settings** (admin) | Club name, short name, description, meeting info, footer note, contact email, Discord/GitHub/Teams, other links, faculty advisor, default SEO title and description | Default share image |
 
 ### Architecture
 
 ```
-/admin/(shell)/layout.tsx   requireOfficer() — the authorization boundary for every admin screen
-  page.tsx                  dashboard (GROQ counts + upcoming + needs attention)
-  events/
-    page.tsx                index, filtered Upcoming / Past / All
-    new/page.tsx            create
-    [id]/edit/page.tsx      edit, keyed by document id
-    [id]/remove/page.tsx    cancel or delete, with the policy explained
-    actions.ts              createEvent, updateEvent, cancelEvent, deleteEvent
+/admin/(shell)/layout.tsx    requireOfficer() — the authorization boundary for every admin screen
+  page.tsx                   dashboard (GROQ counts, upcoming, needs attention, quick actions)
+  events/        page · new · [id]/edit · [id]/remove · actions.ts
+  projects/      page · new · [id]/edit · [id]/remove · actions.ts
+  resources/     page · new · [id]/edit · [id]/remove · actions.ts
+  opportunities/ page · new · [id]/edit · [id]/remove · actions.ts
+  people/        page · new · [id]/edit · [id]/remove · actions.ts
+    officers/    page · new · [id]/edit · [id]/remove        (admin only)
+  settings/      page · actions.ts                           (admin only)
 ```
+
+Every module has the same shape, deliberately: an index with filter tabs, one form shared by create and edit, and a removal screen that explains the options before offering them.
 
 The `(shell)` route group is what keeps `/admin/no-access` outside the authorization boundary — that page must stay reachable *without* a role, or `requireOfficer()` would redirect to it in a loop.
 
-Navigation is defined once in `src/components/admin/navigation.ts` and filtered on the server through `can()`, so no component compares roles directly. Modules that are not built yet have honest "coming later" screens rather than dead links.
+Navigation is defined once in `src/components/admin/navigation.ts` and filtered on the server through `can()`, so no component compares roles directly. An officer without `settings:manage` does not see the Site settings link, and the page refuses them independently if they type the URL.
 
 Reads use `getAdminClient()` (`src/sanity/lib/admin-client.ts`): no CDN, so an officer sees their own save immediately, and the `published` perspective, so Studio drafts do not appear twice.
 
+Shared building blocks live in `src/lib/admin/` (Zod field vocabulary, slug derivation, reference helpers, upload rules, repeating-row parsing) and `src/components/admin/` (form primitives, reference selectors, the repeating-row editor, filter tabs, the destructive-action cards). They were extracted only once Projects proved the same shapes were needed twice — there is no generic schema-driven form renderer, and there should not be.
+
 ### How mutations are secured
 
-Every event action follows the same five steps, in order:
+Every action in every module follows the same five steps, in order:
 
-1. `requireOfficer({ capability: 'content:write' })` — **independently**. A Server Action is its own entry point, reachable by direct POST, so the layout's check does not cover it. `src/lib/events/actions-authorization.test.ts` fails the build if an action ever loses this line.
-2. Zod validation (`src/lib/events/input-schema.ts`) — the app's own contract, not just Sanity's schema rules.
+1. `requireOfficer({ capability: … })` — **independently**. A Server Action is its own entry point, reachable by direct POST, so the layout's check does not cover it.
+2. Zod validation (`src/lib/<module>/input-schema.ts`) — the app's own contract, not just Sanity's schema rules.
 3. `getWriteClient()`, guarded by `server-only`.
-4. Revalidation of every affected route.
-5. A redirect, or a typed error — never a raw Sanity error. Details are logged server-side under `[admin/events]`.
+4. Revalidation of every affected route, through the helpers in `src/lib/revalidate.ts`.
+5. A redirect, or a typed error — never a raw Sanity error. Details are logged server-side under `[admin/<module>]`.
 
-The actions are domain-specific on purpose. A generic `mutateDocument(type, data)` would make each type's authorization and validation impossible to review.
+The actions are domain-specific on purpose (`createProject`, `archiveProject`, …). A generic `mutateDocument(type, data)` would make each type's authorization and validation impossible to review.
+
+Two static guards enforce this and walk the route tree rather than listing files, so a module added later is covered automatically:
+
+- `src/lib/admin/actions-authorization.test.ts` — every exported action authorizes itself, before any Sanity access, with a capability appropriate to the module; no action takes a document type as input; the write token is never read directly; uploads are checked before they reach Sanity.
+- `src/lib/admin/admin-pages-authorization.test.ts` — every page under the shell calls `requireOfficer()` before it queries, and the admin-only screens ask for the stronger capability.
+
+### Officer-facing errors
+
+Officers see a plain sentence: what went wrong, and whether anything changed. Sanity errors, GROQ, tokens, stack traces and Clerk internals never reach the browser — the detail is logged server-side. A rejected save always echoes the submission back, so nothing typed is lost, including rows in the open-roles and links editors.
 
 ### Creating and editing events
 
@@ -258,11 +291,112 @@ Cancelling sets `status: "cancelled"`, which the public queries already exclude 
 
 The rules live in `src/lib/events/delete-policy.ts` and are unit tested.
 
+### Projects
+
+`/admin/projects` has a tab per status (Live, Recruiting, Ideas, Testing, Shipped, Archived, All) and lists the lead, mentor count, open roles, experience level and technology summary — enough to answer "what is this and who runs it?" without opening it.
+
+**Open roles** are edited inline. Each row is a real set of form controls contributing to parallel arrays (`src/lib/admin/rows.ts`), so adding, removing and reordering rows cannot desynchronise them, every control is keyboard-operable, and each row is validated individually with the message shown against *that row*. Nothing about open roles requires Studio.
+
+**People are references, never copies.** The lead is a select, mentors and contributors are filterable checkbox lists, and only names are ever shown — a Sanity document id never appears as UI. If a stored reference points at a person who has since been deleted, the field keeps it as an explicit "currently set — no longer available" row rather than silently clearing it on the next save, and the action re-checks every selected person exists before writing.
+
+**Technologies and learning outcomes** are plain text fields: technologies comma-separated, outcomes one per line (so a sentence containing a comma survives). Entries are trimmed and de-duplicated exactly; nothing is auto-corrected, because "Next.js" and "C++" are the names people meant.
+
+Some rules are the admin's rather than the schema's, so Studio can still record a half-known historical project: a **recruiting** project needs at least one open role, and a **shipped or archived** project with a start date needs an end date.
+
+#### Project deletion policy
+
+Projects are the club's record of what it has actually built, so the default removal action is **archive**, not delete.
+
+| Situation | Offered |
+| --- | --- |
+| Idea or recruiting, nothing linked, no repo/demo/end date | **Archive** or **delete permanently** |
+| Active, testing or shipped | **Archive** only — real work happened |
+| Has a repository, demo or end date | **Archive** only |
+| Anything another document links to | **Archive** only |
+
+Archiving keeps the project on the public index at the bottom and stops it being offered to students; it is reversible. "Shipped" stays a meaningful public state and is never rewritten by removal. The policy lives in `src/lib/projects/delete-policy.ts`, is unit tested, and is re-evaluated inside the action against fresh data — the confirmation screen proves nothing, since the action can be POSTed directly.
+
+### Resources and file uploads
+
+`/admin/resources` filters by type and lists what an officer would actually get from each row — file and extension, repository, or external link — using the same `resourceLink` helper the public pages use, so the two can never disagree.
+
+**Uploads go through the Server Action.** The officer's browser posts the file inside the action's multipart body; the action validates it and hands it to Sanity's asset API with the server-only write token. There is no browser-to-token path, no signed URL, and no upload route of our own. Type and size are checked in `src/lib/admin/assets.ts` before a byte is transferred, and `serverActions.bodySizeLimit` in `next.config.ts` is the outer bound the framework enforces before the action runs at all.
+
+| | Limit | Accepted |
+| --- | --- | --- |
+| **Resource files** | 10 MB | `.pdf .zip .pptx .docx .xlsx .ppt .doc .txt .md .csv` |
+| **Images** (project cover, person photo) | 5 MB | `.jpg .jpeg .png .webp .gif .avif` |
+
+Executables, scripts, HTML and SVG are rejected whatever they claim to be. **Video is deliberately not supported** — a recording belongs on YouTube or Drive with an external link, which is what `externalUrl` is for. Anything larger than the limits above can still be uploaded in Studio; the resources page says so.
+
+Uploading is additive: choosing no file keeps the current one. Replacing and removing are separate, explicitly labelled choices, so a save can never silently drop an asset the officer did not touch.
+
+A resource must have somewhere to go — a file, an external link or a repository. That rule is checked against what the document will look like **after** the save, so an edit that only changes the title still passes with a file already attached.
+
+#### Event ↔ resource relationship
+
+The canonical link is `resource.event` — one field, on the resource, pointing at the event it came from. Set it in the resource form's "Where it came from" section and the material appears on that event's page automatically. There is no second relationship on the event, and there should not be. Saving a resource invalidates the resource routes, the event routes and the homepage together (`revalidateResourceContent`).
+
+#### Resource deletion policy
+
+A resource has no archived state — a resource *is* its content — so deletion is the only removal action, and the screen leads with the alternatives.
+
+| Situation | Offered |
+| --- | --- |
+| Nothing links to it | **Delete permanently**, after typing the title |
+| Another resource lists it as related | Blocked, naming the fix: edit that resource |
+| Anything else references it | Blocked — remove the link first |
+
+Two things are explicitly *not* reasons to delete. A **dead external link** — a recording taken down is still a record that the session happened; edit the URL or attach the file instead. **Age** — clear the "featured" checkbox and it stops being promoted without disappearing. Pointing at a past event does not block deletion, because the resource references the event and not the other way round.
+
+### Opportunities
+
+The board stores **only facts**. There is no `expired` flag and no `daysLeft` number: "6 days left", "closes today" and "closed" are all derived from `deadline` at read time by `src/lib/opportunities/deadline.ts`, which both the public board and the admin's Open / Closing soon / Expired tabs use. An officer sets a date once and never returns to mark it closed.
+
+Expired postings stay in Sanity on purpose — they are a record of what the club shared, and they cost nothing. Deletion exists for a posting entered by mistake, and the removal screen says as much when the deadline has already passed.
+
+**Deadlines are calendar dates, not instants.** `deadline` and `postedAt` are Sanity `date` fields (`YYYY-MM-DD`), `<input type="date">` speaks the same format, and nothing on the path converts between them — an application closing "Oct 1" is open for all of October 1st in Fort Myers. Routing one through `Date` is the Phase 5 bug, and `src/lib/admin/fields.ts` validates these as written rather than parsing them. The same applies to project start/end dates and resource published/reviewed dates.
+
+### People vs. officer accounts
+
+This is the distinction most worth understanding, and the admin repeats it on every relevant screen:
+
+| | **Sanity `person` / `officerRole`** | **Clerk role** |
+| --- | --- | --- |
+| What it is | Public club content | Access to `/admin` |
+| Managed in | `/admin/people` | Clerk dashboard |
+| Effect of adding | Someone appears on the website and can be credited | Someone can sign in and edit |
+| Effect of removing | A credit disappears from the site | Someone loses access |
+
+**Adding a person grants nobody access. Ending an officer term removes nobody's login.** They are separate systems that happen to describe overlapping humans. Granting and revoking `/admin` access is [Clerk dashboard work](#granting-officer-access) and always will be — this phase deliberately builds no Clerk provisioning.
+
+#### People
+
+A `person` is the single record of a human, and everything that credits them points at it — so renaming someone updates every mention at once, and nobody is entered twice. The index shows how many places each person is credited in.
+
+Before deletion, `/admin/people/[id]/remove` lists **every** use by kind — officer terms, events presented, projects led, mentored or contributed to, resources authored, faculty advisor — each with a link to the screen that changes it. A person credited anywhere cannot be deleted here, because that is a decision about other documents, not about them. The rules are in `src/lib/people/delete-policy.ts`.
+
+#### Officer terms (admin only)
+
+`/admin/people/officers` is the leadership model made visible: a **current board**, and an unbounded record of every board before it. One `officerRole` document is one person holding one position for one academic year.
+
+A handover is: add a term for each incoming officer, then **end** each outgoing one. Ending sets `isCurrent: false` — the record stays as history and comes off the public leadership list. Deleting a term erases a piece of that history and exists only for one entered by mistake. Neither touches the person's record.
+
+Academic years are written as two consecutive years; a hyphen or an en dash is accepted and stored normalised as `2025–2026`, so the list sorts and reads consistently. A new term defaults to the academic year running now (the club's year starts with the fall semester).
+
+### Site settings (admin only)
+
+`/admin/settings` edits the `siteSettings` **singleton** — the club's name, description, meeting info, contact email, Discord/GitHub/Teams links, other social links, faculty advisor, footer note and default SEO title and description. These appear on every page, which is why the screen is gated on `settings:manage`.
+
+There is deliberately **nothing here for the application itself**: no Sanity project id or dataset, no API tokens, no Clerk configuration, no deployment variables, no design tokens. Those are code and environment concerns, and an officer should never be one mistyped field away from breaking the site.
+
+The singleton guarantee is `createIfNotExists` on the fixed id `siteSettings` followed by a patch on that same id, in one transaction. The public site fetches settings by that exact id and Studio pins editing to it, so a stray second document would be invisible to both — the admin can never create one. On a fresh dataset the form falls back to the schema's initial values and the first save creates the document; the page says so rather than treating it as an error. SEO is written by path (`seo.metaTitle`), so a share image set in Studio survives.
+
 ### Drafts and publishing
 
-`/admin` writes **directly to published documents**. There is no draft state in the custom admin: saving an event makes it live.
+`/admin` writes **directly to published documents**. There is no draft state in the custom admin: saving makes the change live, in every module.
 
-This is a deliberate V1 choice — the officer workflow is "schedule the thing and announce it", and a half-built draft system would be worse than none. Studio's full draft/publish workflow is unchanged and still available. The one consequence to know: **an event left as an unpublished draft in Studio does not appear in `/admin`** until it is published.
+This is a deliberate V1 choice — the officer workflow is "do the thing and announce it", and a half-built draft system would be worse than none. Studio's full draft/publish workflow is unchanged and still available. The one consequence to know: **a document left as an unpublished draft in Studio does not appear in `/admin`** until it is published.
 
 ### Dates and times
 
@@ -275,16 +409,31 @@ Conversion uses `Intl` only — no date library. Naive `new Date("2026-09-04T18:
 
 Anything needing a timezone must import `CLUB_TIME_ZONE` from that module rather than hard-coding one.
 
-### Caching
+### How a change reaches the public site
 
-Admin routes are `force-dynamic` — authorization depends on the request, so none of them may be prerendered. After a mutation, `revalidateEventContent()` in `actions.ts` invalidates `/admin` and everything under it in one call. That function is the single place to extend when the public event pages are built.
+Public pages are statically rendered with a long revalidate window, so a save has to invalidate them explicitly — that is the trade for not disabling caching site-wide. Every mutation calls one helper from `src/lib/revalidate.ts`, which is the single place that knows which routes a content type appears on:
+
+| Helper | Invalidates |
+| --- | --- |
+| `revalidateEventContent` | `/`, `/events`, `/events/[slug]`, `/resources`, `/resources/[slug]` |
+| `revalidateProjectContent` | `/`, `/projects`, `/projects/[slug]` |
+| `revalidateResourceContent` | `/`, `/resources`, `/resources/[slug]`, `/events`, `/events/[slug]` |
+| `revalidateOpportunityContent` | `/`, `/opportunities` |
+| `revalidatePeopleContent` | `/`, `/about`, and every route that credits a person |
+| `revalidateSiteSettings` | the whole public layout — settings feed the header, footer and metadata |
+
+All of them also invalidate `/admin` and everything under it. Detail routes are invalidated as *routes* rather than concrete URLs, because a save can rename a slug or change the "related" rails on another document's page.
+
+Admin routes themselves are `force-dynamic` — authorization depends on the request, so none of them may be prerendered.
 
 ### Known limitations
 
-- Portable Text, images, file uploads, SEO and related-resource links are Studio-only.
-- Officers and admins have identical content permissions; the `officers:manage` capability exists but nothing uses it yet.
-- No public event pages exist, so the admin has nothing to link "view on site" to.
-- Events index loads all events and filters in the page — correct at club scale (dozens per year), and worth revisiting only if that changes.
+- **Portable Text is Studio-only.** The rich-text description on events and projects has no admin editor; the short description and summary fields cover the card and listing copy.
+- **Screenshot galleries and share images are Studio-only.** Single images (project cover, person photo) upload from `/admin`; managing an ordered gallery is not worth a bespoke editor, and the project form links to Studio and reports the current count.
+- **Files over 10 MB, and video, are not accepted.** See [Resources and file uploads](#resources-and-file-uploads).
+- **No unsaved-changes warning.** Deferred deliberately: the reliable platform primitive (`beforeunload`) does not fire on client-side navigation, and the ways to catch that in the App Router mean intercepting routing, which is not worth the risk to Server Component navigation. The mitigation already in place is that a rejected save never loses input — every field, including repeating rows, is echoed back.
+- **Indexes load all documents of a type and filter in the page.** Correct at club scale (dozens per year), and worth revisiting only if that changes.
+- **No Clerk provisioning.** Inviting and removing officer accounts is Clerk dashboard work by design; see [People vs. officer accounts](#people-vs-officer-accounts).
 
 ## Project status
 
@@ -294,4 +443,10 @@ Phase 2 — officer authentication: Clerk wiring, `/sign-in`, role-based authori
 
 Phase 3 — admin shell and Events: the reusable admin application shell, a Sanity-backed dashboard, and the complete Events management vertical slice that later modules copy. The Phase 2 write-check diagnostic was removed here — real event mutations now prove the same path.
 
-Not built yet: the public UI (events, projects, resources, opportunities pages), and admin CRUD for every module other than Events.
+Phase 4 — public site foundation: the site shell, homepage and events pages.
+
+Phase 5 — public content: projects, resources and opportunities pages, the derived deadline model, and centralised revalidation.
+
+Phase 6 — officer content management: admin CRUD for projects, resources, opportunities, people, officer terms and site settings, the shared admin form architecture they are built from, Sanity-backed file and image uploads, and the capability split that makes club-wide settings admin-only.
+
+Not built yet: global Cmd/Ctrl+K search, remaining public About/Join polish, analytics, and production deployment.
