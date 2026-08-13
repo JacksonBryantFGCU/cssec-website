@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
-import { test } from 'node:test'
+import { describe, it, test } from 'node:test'
 
 import {
   clubInputToIso,
+  formatCalendarDate,
   formatClubDateLong,
   formatClubDateParts,
   formatClubDateTime,
@@ -87,4 +88,27 @@ test('a time range collapses a shared meridiem and keeps a crossing one', () => 
 test('a time range degrades to the start alone, then to nothing', () => {
   assert.equal(formatClubTimeRange('2026-09-18T22:00:00.000Z', null), '6:00 PM')
   assert.equal(formatClubTimeRange(null, '2026-09-18T23:30:00.000Z'), '')
+})
+
+describe('formatCalendarDate', () => {
+  it('keeps the stored day for a date-only field', () => {
+    // The bug this prevents: reading `2026-01-15` as UTC midnight and then
+    // rendering it in club time lands on the 14th.
+    assert.equal(formatCalendarDate('2026-01-15'), 'Thu, Jan 15, 2026')
+    assert.equal(formatCalendarDate('2026-08-01'), 'Sat, Aug 1, 2026')
+  })
+
+  it('is stable across the new-year boundary', () => {
+    assert.equal(formatCalendarDate('2027-01-01'), 'Fri, Jan 1, 2027')
+  })
+
+  it('falls back to the instant formatter for a full datetime', () => {
+    assert.equal(formatCalendarDate('2026-09-18T22:00:00.000Z'), formatClubDateLong('2026-09-18T22:00:00.000Z'))
+  })
+
+  it('renders nothing for a missing or malformed date', () => {
+    assert.equal(formatCalendarDate(null), '')
+    assert.equal(formatCalendarDate(undefined), '')
+    assert.equal(formatCalendarDate(''), '')
+  })
 })

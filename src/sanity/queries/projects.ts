@@ -2,11 +2,40 @@ import { defineQuery } from 'next-sanity'
 
 import { imageFragment, personFragment, projectCardFragment, seoFragment } from './fragments'
 
-/** All projects, newest and most active first. */
+/**
+ * The `/projects` index.
+ *
+ * Ordered the way the page is read rather than by date alone: projects taking
+ * people come first, then live ones, and archived work sinks — a student
+ * scanning for something to join should not have to scroll past finished
+ * projects to find an open role.
+ *
+ * The card fragment alone is not enough here. The approved index row shows the
+ * open roles, the lead and mentors and a "what you'll learn" line, so those are
+ * projected rather than invented in the component.
+ */
 export const PROJECTS_QUERY = defineQuery(/* groq */ `
-  *[_type == "project"] | order(featured desc, coalesce(startedAt, _createdAt) desc){
-    ${projectCardFragment}
-  }
+  *[_type == "project"]
+    | order(
+        select(
+          status == "recruiting" => 0,
+          status == "active" => 1,
+          status == "testing" => 2,
+          status == "shipped" => 3,
+          status == "idea" => 4,
+          5
+        ) asc,
+        featured desc,
+        coalesce(startedAt, _createdAt) desc
+      ){
+      ${projectCardFragment},
+      learningOutcomes,
+      githubUrl,
+      currentFocus,
+      openRoles[]{ _key, title, experienceLevel },
+      lead->{ _id, name },
+      mentors[]->{ _id, name }
+    }
 `)
 
 /** Projects currently looking for people. */

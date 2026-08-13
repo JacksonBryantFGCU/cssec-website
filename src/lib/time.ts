@@ -174,6 +174,37 @@ export function formatClubDateLong(iso: string | null | undefined): string {
   })
 }
 
+/**
+ * Formats a Sanity `date` field — `YYYY-MM-DD`, with no time and no zone.
+ *
+ * These are calendar dates, not instants: a project "started 2026-01-15"
+ * started on the 15th everywhere. Passing one through `formatClubDateLong`
+ * would read it as UTC midnight and then render it in club time, landing on
+ * the 14th — so the date is formatted in UTC here, which is the only way to
+ * get the stored day back out unchanged.
+ *
+ * Anything that is not a bare date falls through to the instant formatter, so
+ * a datetime passed here still renders sensibly.
+ */
+export function formatCalendarDate(date: string | null | undefined): string {
+  if (!date) return ''
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date.trim())
+  if (!match) return formatClubDateLong(date)
+
+  const [, year, month, day] = match
+  const instant = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
+  if (Number.isNaN(instant.getTime())) return ''
+
+  return instant.toLocaleDateString('en-US', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
 /** The three pieces of the stacked date block: `THU` / `18` / `SEP`. */
 export type ClubDateParts = { weekday: string; day: string; month: string }
 

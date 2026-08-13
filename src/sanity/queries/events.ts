@@ -7,11 +7,17 @@ import {
   seoFragment,
 } from './fragments'
 
-/** Events that have not happened yet, soonest first. */
+/**
+ * Events that have not happened yet, soonest first.
+ *
+ * `topics` rides along so `/events` can filter upcoming and past sessions on
+ * the same field; the homepage ignores it.
+ */
 export const UPCOMING_EVENTS_QUERY = defineQuery(/* groq */ `
   *[_type == "event" && status != "cancelled" && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())]
     | order(startsAt asc){
       ${eventCardFragment},
+      topics,
       presenters[]->{ _id, name }
     }
 `)
