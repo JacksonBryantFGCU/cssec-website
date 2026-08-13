@@ -69,7 +69,7 @@ export default async function HomePage() {
               <p className="text-navy-soft text-[13.5px]">{links.meetingInfo}</p>
             ) : null}
             <div className="flex flex-col gap-2 sm:flex-row sm:gap-2.5">
-              <Link className={siteButton({ variant: 'primary' })} href="/about">
+              <Link className={siteButton({ variant: 'primary' })} href="/about#join">
                 Join CSSEC
               </Link>
               {links.discordUrl ? (
@@ -225,7 +225,7 @@ export default async function HomePage() {
         <div className="mt-4 flex flex-col gap-2">
           <Link
             className="text-club-dark rounded-[10px] bg-white py-3.5 text-center text-[15px] font-bold"
-            href="/about"
+            href="/about#join"
           >
             How to join
           </Link>

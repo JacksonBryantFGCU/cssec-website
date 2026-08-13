@@ -25,6 +25,7 @@ export const SITE_SETTINGS_QUERY = defineQuery(/* groq */ `
       _id,
       name,
       email,
+      shortBio,
       photo { ${imageFragment} }
     },
     seo { ${seoFragment} }

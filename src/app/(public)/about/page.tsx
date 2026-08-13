@@ -1,9 +1,13 @@
 import type { Metadata } from 'next'
 
 import { siteButton } from '@/components/site/button'
-import { MonoLabel, SectionHeader } from '@/components/site/primitives'
+import { Faq } from '@/components/site/faq'
+import { OfficerBoard } from '@/components/site/officer-board'
+import { MonoLabel, SectionHeader, SectionLink } from '@/components/site/primitives'
 import { getSiteLinks } from '@/components/site/site-links'
 import { SITE_AFFILIATION } from '@/lib/site'
+import { PUBLIC_REVALIDATE_SECONDS, publicClient } from '@/sanity/lib/public-client'
+import { CURRENT_OFFICERS_QUERY } from '@/sanity/queries/people'
 
 export const metadata: Metadata = {
   title: 'About & join',
@@ -12,39 +16,71 @@ export const metadata: Metadata = {
   alternates: { canonical: '/about' },
 }
 
+const fetchOptions = { next: { revalidate: PUBLIC_REVALIDATE_SECONDS } }
+
+/** The three things the club actually does, in the approved design's order. */
+const PROGRAMMES = [
+  {
+    kicker: 'WORKSHOPS',
+    title: 'One thing, taught properly, every week',
+    body: 'Hands-on sessions on the things courses skip: Git, deployment, interviews, containers. Every session’s slides and code stay in the library afterwards.',
+    href: '/events',
+    label: 'See what we have run →',
+  },
+  {
+    kicker: 'PROJECTS',
+    title: 'Real teams, mentors attached',
+    body: 'Teams have a lead and a mentor each, and roles are labelled by the experience they actually need. Beginners are the point, not an exception.',
+    href: '/projects',
+    label: 'Open roles →',
+  },
+  {
+    kicker: 'OPPORTUNITIES',
+    title: 'Vetted, local, and on time',
+    body: 'Internships and research roles that hire from FGCU, posted with deadlines while they are still open. Officers will read your application before you send it.',
+    href: '/opportunities',
+    label: 'Opportunity board →',
+  },
+]
+
+/** The four surfaces the club runs on, and who each one is for. */
+const PLATFORMS = [
+  {
+    name: 'This website',
+    who: 'Everyone',
+    what: 'Discover, reference, and learn. Events, resources, projects and opportunities live here permanently.',
+  },
+  {
+    name: 'Discord',
+    who: 'Everyone',
+    what: 'Discuss, ask questions, and socialize. Announcements arrive here first.',
+  },
+  {
+    name: 'GitHub',
+    who: 'Project contributors',
+    what: 'Build and collaborate. Repositories, issues, and code review.',
+  },
+  {
+    name: 'Microsoft Teams',
+    who: 'Officers only',
+    what: 'Planning, budgets, and internal documents.',
+  },
+]
+
 /**
- * `/about` — what the club is and how to join.
+ * `/about` — what the club is, how to join, who runs it, and the questions
+ * people ask before their first meeting.
  *
- * The "Join CSSEC" button in the header, the footer and the mobile drawer all
- * land here, so this page is real rather than a placeholder: the officer
- * roster and the full FAQ come with the rest of the About build, but the
- * question the button implies is answered here today.
+ * `#join` is the anchor every "Join CSSEC" control on the site resolves to —
+ * the header, the mobile drawer, the footer and both homepage calls to action
+ * — so the join section keeps that id whatever else moves around it. There is
+ * deliberately no separate `/join` route; the approved design has none.
  */
 export default async function AboutPage() {
-  const links = await getSiteLinks()
-
-  const platforms = [
-    {
-      name: 'This website',
-      who: 'Everyone',
-      what: 'Discover, reference, and learn. Events, resources and projects live here permanently.',
-    },
-    {
-      name: 'Discord',
-      who: 'Everyone',
-      what: 'Discuss, ask questions, and socialize. Announcements arrive here first.',
-    },
-    {
-      name: 'GitHub',
-      who: 'Project contributors',
-      what: 'Build and collaborate. Repositories, issues, and code review.',
-    },
-    {
-      name: 'Microsoft Teams',
-      who: 'Officers only',
-      what: 'Planning, budgets, and internal documents.',
-    },
-  ]
+  const [links, officers] = await Promise.all([
+    getSiteLinks(),
+    publicClient.fetch(CURRENT_OFFICERS_QUERY, {}, fetchOptions),
+  ])
 
   return (
     <>
@@ -56,7 +92,7 @@ export default async function AboutPage() {
           </h1>
           <p className="text-navy-body font-serif text-[18px] leading-[1.5] sm:text-[20px]">
             {links.description ??
-              'A student-run club for Computer Science and Software Engineering majors. We meet weekly, keep every workshop here, and build real software in mentored teams.'}
+              'A place to learn things the courses do not cover, with people at the same stage as you. We meet weekly, keep every workshop here, and build real software in mentored teams.'}
           </p>
         </div>
       </div>
@@ -101,38 +137,95 @@ export default async function AboutPage() {
             </div>
           </div>
 
-          <div className="border-rule bg-paper flex flex-col gap-3 rounded-[10px] border p-4 sm:p-[20px_22px]">
-            <MonoLabel className="text-[10px]">WHERE THE CLUB LIVES</MonoLabel>
-            <dl className="flex flex-col gap-3.5">
-              {platforms.map((platform) => (
-                <div className="flex flex-col gap-1" key={platform.name}>
-                  <dt className="text-ink text-[14.5px] font-semibold">
-                    {platform.name}{' '}
-                    <span className="text-ink-label font-mono text-[10px] tracking-[0.12em] uppercase">
-                      {platform.who}
-                    </span>
-                  </dt>
-                  <dd className="text-ink-soft m-0 text-[13.5px] leading-relaxed">
-                    {platform.what}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
+          <ul className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-1">
+            {PROGRAMMES.map((programme) => (
+              <li
+                className="border-rule bg-paper flex flex-col gap-1.5 rounded-[10px] border p-4 sm:p-[18px_20px]"
+                key={programme.kicker}
+              >
+                <MonoLabel tone="green" className="text-[10px]">
+                  {programme.kicker}
+                </MonoLabel>
+                <p className="font-display text-ink text-[16px] font-semibold">
+                  {programme.title}
+                </p>
+                <p className="text-ink-soft text-[13.5px] leading-relaxed">{programme.body}</p>
+                <p className="pt-0.5">
+                  <SectionLink href={programme.href}>{programme.label}</SectionLink>
+                </p>
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
-      <section className="bg-paper px-4 py-8 sm:px-7 sm:py-10">
+      <section className="border-rule bg-paper border-b px-4 py-8 sm:px-7 sm:py-10">
         <SectionHeader
-          standfirst="Officers, the full FAQ, and the club's history are coming with the rest of this page."
-          title="Who runs CSSEC"
+          standfirst="Four tools, each with one job. Most members only need the first two."
+          title="Where everything lives"
           variant="editorial"
         />
-        {links.advisorName ? (
-          <p className="text-ink-body mt-4 max-w-[720px] text-[15px] leading-[1.7]">
-            The club is advised by {links.advisorName} and run by an elected student officer team.
-          </p>
-        ) : null}
+        <dl className="mt-4 grid max-w-[900px] gap-3.5 sm:grid-cols-2">
+          {PLATFORMS.map((platform) => (
+            <div
+              className="border-rule flex flex-col gap-1 rounded-[10px] border bg-white p-4 sm:p-[18px_20px]"
+              key={platform.name}
+            >
+              <dt className="text-ink flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5 text-[14.5px] font-semibold">
+                {platform.name}
+                <span className="text-ink-label font-mono text-[10px] tracking-[0.12em] uppercase">
+                  {platform.who}
+                </span>
+              </dt>
+              <dd className="text-ink-soft m-0 text-[13.5px] leading-relaxed">{platform.what}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
+      <section className="bg-white px-4 py-8 sm:px-7 sm:py-10">
+        <div className="grid max-w-[1000px] gap-8 lg:grid-cols-2 lg:gap-11">
+          <div className="flex flex-col">
+            <SectionHeader title="Who runs it" variant="compact" />
+            <OfficerBoard advisor={links.advisor} officers={officers} />
+          </div>
+
+          <div className="flex flex-col">
+            <SectionHeader title="Questions people actually ask" variant="compact" />
+            <Faq />
+
+            <div className="border-club-border bg-club-surface-soft mt-5 flex flex-col gap-1.5 rounded-[10px] border p-4 sm:p-[18px_20px]">
+              <p className="text-club-dark text-[14.5px] font-semibold">Still have a question?</p>
+              <p className="text-ink-body text-[13.5px] leading-relaxed">
+                Ask in Discord
+                {links.contactEmail ? (
+                  <>
+                    , or email the officers at{' '}
+                    <a
+                      className="text-club-link font-semibold hover:underline"
+                      href={`mailto:${links.contactEmail}`}
+                    >
+                      {links.contactEmail}
+                    </a>
+                  </>
+                ) : null}
+                . We answer within a day in term time.
+              </p>
+              {links.discordUrl ? (
+                <p className="pt-1.5">
+                  <a
+                    className={siteButton({ variant: 'outline', size: 'sm' })}
+                    href={links.discordUrl}
+                    rel="noreferrer noopener"
+                    target="_blank"
+                  >
+                    Ask in Discord ↗
+                  </a>
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
       </section>
     </>
   )

@@ -6,10 +6,15 @@ It serves three audiences from one codebase:
 
 | Surface | Path | Who it is for | Status |
 | --- | --- | --- | --- |
-| Public site | `/`, `/events`, `/projects`, `/resources`, `/opportunities`, … | Students | Planned |
-| Officer admin | `/admin` | Club officers, day to day | Live — dashboard and Events management |
+| Public site | `/`, `/events`, `/projects`, `/resources`, `/opportunities`, `/about` | Students | Live — every page, plus global search |
+| Officer admin | `/admin` | Club officers, day to day | Live — all eight modules |
 | Officer sign-in | `/sign-in` | Club officers | Live |
 | Sanity Studio | `/studio` | Advanced content management / fallback editor | Live |
+
+| Surface | Screens |
+| --- | --- |
+| Public | Home · Events (index, detail, `.ics`) · Projects (index, detail) · Resources (index, detail) · Opportunities · About & join |
+| Admin | Dashboard · Events · Projects · Resources · Opportunities · People · Officer terms · Site settings |
 
 ## Architecture
 
@@ -17,7 +22,7 @@ It serves three audiences from one codebase:
 - **Clerk** handles officer identity and authentication for `/admin`.
 - **Next.js** renders both the public site and the custom admin.
 - **`/studio`** is the full Sanity Studio — the advanced CMS and the fallback for anything the custom admin does not cover.
-- **`/admin`** is the simplified officer workflow: a small, guided UI over server-side Sanity mutations. Events are managed here today; the remaining modules follow the same pattern.
+- **`/admin`** is the simplified officer workflow: a small, guided UI over server-side Sanity mutations. Every content type is managed here — events, projects, resources, opportunities, people, officer terms and site settings — each following the same shape.
 
 There is no separate database. Content lives in the Sanity Content Lake; identity lives in Clerk.
 
@@ -115,6 +120,37 @@ pnpm typegen   # sanity schemas extract --force && sanity typegen generate
 | `pnpm typegen` | Sanity schema extraction + type generation |
 | `pnpm test` | Authorization tests (Node's built-in runner — no test stack installed) |
 | `pnpm validate` | typegen → lint → typecheck → test → build |
+
+## Public site
+
+### Global search
+
+⌘K on macOS, Ctrl+K elsewhere — or the search control in the header, which is what makes it discoverable on touch. The shortcut is ignored while the reader is typing in a field, so it never steals the key from a form.
+
+One typed GROQ query (`src/sanity/queries/search.ts`) spans events, projects, resources and opportunities, matching exactly the fields the existing card fragments already expose — there is no separate search-only content model to keep in step. It is served by `GET /api/search`, a read-only route handler on `publicClient`: no token, no write path, and nothing returned that is not already on a public page. A mutation-shaped Server Action would have put an unauthenticated caller on the officer write path, which is why search is not one.
+
+Ranking is three readable rules in `src/lib/search/results.ts` — title, then strong metadata (topics, stack, skills, organization), then body text — summed per term and unit tested. There is deliberately no relevance engine, no Algolia and no local index: the club has hundreds of documents, not millions.
+
+Opportunities have no detail route (the schema has no slug, by design), so a result links straight to the employer's application page, falling back to `/opportunities`. Results are grouped by type, capped at 20, and the dialog is a real combobox — the input keeps focus while ↑/↓ move `aria-activedescendant`, and every result is still an ordinary link for pointer, touch and Tab.
+
+### Images
+
+Sanity is the image backend. `src/sanity/lib/image.ts` is the only place a CDN URL is constructed: callers ask for the box they intend to fill and get back `next/image` props already cropped to it, respecting any hotspot and crop set in Studio, so a page never downloads a 4000px original to render a 96px portrait. `next.config.ts` scopes `images.remotePatterns` to this project's path on `cdn.sanity.io` rather than to the whole host.
+
+Two places render images, both taken from the approved design:
+
+| Where | Source | Missing |
+| --- | --- | --- |
+| Officer board on `/about` | `person.photo` | Initials on the club surface colour — never a stock headshot |
+| Project detail | `project.coverImage`, falling back to the first screenshot | Nothing is rendered |
+
+The design shows **one** image slot on a project and none at all on the homepage or the projects index, where rows are deliberately text-first. That is why a project's picture appears in exactly one place, and why the `screenshots` array is a fallback rather than a gallery.
+
+### About and joining
+
+There is no `/join` route, by design. Every "Join CSSEC" control — header, mobile drawer, footer, both homepage calls to action — resolves to `/about#join`.
+
+`/about` carries the club's own copy plus two Sanity-backed sections: the current officer board (`officerRole` where `isCurrent`, joined to the person, with the faculty advisor listed after it from site settings) and the FAQ. The FAQ is code-managed on purpose — fees, majors and experience requirements change roughly never, and giving them a schema would add an admin module nobody would open twice a year.
 
 ## Authentication and officer access
 
@@ -429,7 +465,7 @@ Admin routes themselves are `force-dynamic` — authorization depends on the req
 ### Known limitations
 
 - **Portable Text is Studio-only.** The rich-text description on events and projects has no admin editor; the short description and summary fields cover the card and listing copy.
-- **Screenshot galleries and share images are Studio-only.** Single images (project cover, person photo) upload from `/admin`; managing an ordered gallery is not worth a bespoke editor, and the project form links to Studio and reports the current count.
+- **Screenshot galleries and share images are Studio-only.** Single images (project cover, person photo) upload from `/admin` and render publicly; managing an ordered gallery is not worth a bespoke editor, and the project form links to Studio and reports the current count. Only the *first* screenshot is ever shown, and only when a project has no cover image — the approved design has one image slot per project, not a gallery.
 - **Files over 10 MB, and video, are not accepted.** See [Resources and file uploads](#resources-and-file-uploads).
 - **No unsaved-changes warning.** Deferred deliberately: the reliable platform primitive (`beforeunload`) does not fire on client-side navigation, and the ways to catch that in the App Router mean intercepting routing, which is not worth the risk to Server Component navigation. The mitigation already in place is that a rejected save never loses input — every field, including repeating rows, is echoed back.
 - **Indexes load all documents of a type and filter in the page.** Correct at club scale (dozens per year), and worth revisiting only if that changes.
@@ -449,4 +485,6 @@ Phase 5 — public content: projects, resources and opportunities pages, the der
 
 Phase 6 — officer content management: admin CRUD for projects, resources, opportunities, people, officer terms and site settings, the shared admin form architecture they are built from, Sanity-backed file and image uploads, and the capability split that makes club-wide settings admin-only.
 
-Not built yet: global Cmd/Ctrl+K search, remaining public About/Join polish, analytics, and production deployment.
+Phase 7 — public completion: the current officer board and FAQ on `/about`, public Sanity image rendering, and global ⌘/Ctrl+K search across events, projects, resources and opportunities. The unused Live Content API scaffolding was removed here.
+
+Not built yet: sitemap and robots, structured data, share images, favicon and app icons, wiring `siteSettings.seo` into the root metadata, analytics, error monitoring, CI, and production deployment. A full assessment is in [`docs/PRODUCTION_READINESS_AUDIT.md`](docs/PRODUCTION_READINESS_AUDIT.md).

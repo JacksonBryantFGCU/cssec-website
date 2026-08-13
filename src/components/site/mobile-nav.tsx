@@ -113,7 +113,7 @@ export function MobileNav({
           <div className="flex flex-col gap-[9px] pt-4">
             <Link
               className="bg-club-green text-club-green-ink rounded-[10px] py-3.5 text-center text-[15px] font-bold"
-              href="/about"
+              href="/about#join"
               onClick={close}
             >
               Join CSSEC
