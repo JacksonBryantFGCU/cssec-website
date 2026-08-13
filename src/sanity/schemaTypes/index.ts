@@ -1,6 +1,5 @@
 import { type SchemaTypeDefinition } from 'sanity'
 
-import { adminWriteCheck } from './documents/adminWriteCheck'
 import { event } from './documents/event'
 import { officerRole } from './documents/officerRole'
 import { opportunity } from './documents/opportunity'
@@ -14,7 +13,7 @@ import { seo } from './objects/seo'
 import { socialLink } from './objects/socialLink'
 
 /** Document types that may only ever have one instance. */
-export const SINGLETON_TYPES = ['siteSettings', 'adminWriteCheck'] as const
+export const SINGLETON_TYPES = ['siteSettings'] as const
 
 export const schema: { types: SchemaTypeDefinition[] } = {
   types: [
@@ -26,8 +25,6 @@ export const schema: { types: SchemaTypeDefinition[] } = {
     opportunity,
     person,
     officerRole,
-    // Diagnostics
-    adminWriteCheck,
     // Objects
     seo,
     socialLink,

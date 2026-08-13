@@ -86,7 +86,7 @@ export const SOCIAL_PLATFORMS: Option[] = [
 ]
 
 /** Looks up a human-readable title for a stored option value. */
-export function titleForValue(options: Option[], value?: string) {
+export function titleForValue(options: Option[], value?: string | null) {
   if (!value) return undefined
   return options.find((option) => option.value === value)?.title ?? value
 }

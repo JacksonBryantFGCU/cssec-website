@@ -7,7 +7,7 @@ It serves three audiences from one codebase:
 | Surface | Path | Who it is for | Status |
 | --- | --- | --- | --- |
 | Public site | `/`, `/events`, `/projects`, `/resources`, `/opportunities`, … | Students | Planned |
-| Officer admin | `/admin` | Club officers, day to day | Protected shell (no CRUD yet) |
+| Officer admin | `/admin` | Club officers, day to day | Live — dashboard and Events management |
 | Officer sign-in | `/sign-in` | Club officers | Live |
 | Sanity Studio | `/studio` | Advanced content management / fallback editor | Live |
 
@@ -17,7 +17,7 @@ It serves three audiences from one codebase:
 - **Clerk** handles officer identity and authentication for `/admin`.
 - **Next.js** renders both the public site and the custom admin.
 - **`/studio`** is the full Sanity Studio — the advanced CMS and the fallback for anything the custom admin does not cover.
-- **`/admin`** will become the simplified officer workflow (a small, guided UI over server-side Sanity mutations). Only the protected shell exists today.
+- **`/admin`** is the simplified officer workflow: a small, guided UI over server-side Sanity mutations. Events are managed here today; the remaining modules follow the same pattern.
 
 There is no separate database. Content lives in the Sanity Content Lake; identity lives in Clerk.
 
@@ -173,7 +173,7 @@ The typed shape of that claim lives in `src/auth/roles.ts`. Nothing breaks if it
 
 ### Sanity write security
 
-Mutations go through one path only: Server Action → `requireOfficer()` → Zod validation → `getWriteClient()` (`src/sanity/lib/write-client.ts`, guarded by `server-only`) → Content Lake. `SANITY_API_WRITE_TOKEN` is read only there, is never logged, and cannot appear in a browser bundle. `/admin` demonstrates this with a write check that updates the `adminWriteCheck` diagnostic document.
+Mutations go through one path only: Server Action → `requireOfficer()` → Zod validation → `getWriteClient()` (`src/sanity/lib/write-client.ts`, guarded by `server-only`) → Content Lake. `SANITY_API_WRITE_TOKEN` is read only there, is never logged, and cannot appear in a browser bundle. See [Officer admin](#officer-admin-admin) for how the event actions apply this.
 
 ### Local development
 
@@ -188,13 +188,110 @@ To verify the whole chain by hand:
 | Visit `/admin` signed out | Redirects to `/sign-in?redirect_url=%2Fadmin`, no admin content in the response |
 | Sign in as a user with **no** `role` metadata | Lands on `/admin/no-access`; `/admin` stays inaccessible |
 | Add `{"role": "officer"}`, sign in again | `/admin` renders with your name and role |
-| Press **Run write check** | Success message; the timestamp also appears in Studio under *Admin write check (diagnostic)* |
+| Create an event at `/admin/events/new` | It appears in the list, on the dashboard, and in Studio |
 | Clear the `role`, reload `/admin` | Back to `/admin/no-access` — no deploy needed |
+
+## Officer admin (`/admin`)
+
+### `/admin` or `/studio`?
+
+| Use `/admin` | Use `/studio` |
+| --- | --- |
+| The everyday jobs: schedule an event, fix a room, cancel something, check what needs attention | Anything `/admin` does not cover yet |
+| Officers who should not have to learn a CMS | Long rich-text descriptions and setup instructions |
+| Guided forms with plain-language validation | SEO overrides, images, file uploads |
+| | Projects, resources, opportunities, people, site settings (until their admin screens land) |
+| | Deleting historical content, and any repair work |
+
+Both write to the same Sanity dataset, so the two are always consistent: an event created in `/admin` opens normally in Studio, and one created in Studio appears in `/admin`. Neither is a copy of the other.
+
+### Architecture
+
+```
+/admin/(shell)/layout.tsx   requireOfficer() — the authorization boundary for every admin screen
+  page.tsx                  dashboard (GROQ counts + upcoming + needs attention)
+  events/
+    page.tsx                index, filtered Upcoming / Past / All
+    new/page.tsx            create
+    [id]/edit/page.tsx      edit, keyed by document id
+    [id]/remove/page.tsx    cancel or delete, with the policy explained
+    actions.ts              createEvent, updateEvent, cancelEvent, deleteEvent
+```
+
+The `(shell)` route group is what keeps `/admin/no-access` outside the authorization boundary — that page must stay reachable *without* a role, or `requireOfficer()` would redirect to it in a loop.
+
+Navigation is defined once in `src/components/admin/navigation.ts` and filtered on the server through `can()`, so no component compares roles directly. Modules that are not built yet have honest "coming later" screens rather than dead links.
+
+Reads use `getAdminClient()` (`src/sanity/lib/admin-client.ts`): no CDN, so an officer sees their own save immediately, and the `published` perspective, so Studio drafts do not appear twice.
+
+### How mutations are secured
+
+Every event action follows the same five steps, in order:
+
+1. `requireOfficer({ capability: 'content:write' })` — **independently**. A Server Action is its own entry point, reachable by direct POST, so the layout's check does not cover it. `src/lib/events/actions-authorization.test.ts` fails the build if an action ever loses this line.
+2. Zod validation (`src/lib/events/input-schema.ts`) — the app's own contract, not just Sanity's schema rules.
+3. `getWriteClient()`, guarded by `server-only`.
+4. Revalidation of every affected route.
+5. A redirect, or a typed error — never a raw Sanity error. Details are logged server-side under `[admin/events]`.
+
+The actions are domain-specific on purpose. A generic `mutateDocument(type, data)` would make each type's authorization and validation impossible to review.
+
+### Creating and editing events
+
+`/admin/events/new` and `/admin/events/[id]/edit` render the same form, so they cannot drift apart. Editing is keyed by **document id**, not slug: the slug follows the title, so an id-based URL is the one that keeps working.
+
+The slug is derived from the title (`src/lib/events/slug.ts`) and only overridden deliberately; collisions get a readable `-2` suffix. Officers never have to think about URL formatting.
+
+The form covers the fields needed to announce an event: title, status, type, dates, location, summary, experience level, prerequisites, topics, presenters, registration and community links, featured, and a post-event recap. **Rich text (full description, setup instructions), SEO and related resources stay in Studio** — `updateEvent` patches only the fields it manages, so Studio-authored content survives an admin edit untouched.
+
+### Delete or archive?
+
+Events are institutional memory: a workshop from two years ago is evidence the club has been running, and resources link back to it. So deletion is never the default action, and never one click from a list — `/admin/events/[id]/remove` explains both options and offers the safe one first.
+
+| Situation | Offered |
+| --- | --- |
+| Event has not started yet, nothing links to it | **Cancel** (reversible) or **delete permanently** |
+| Event has started, or is marked completed | **Cancel** only |
+| Anything a resource links to | **Cancel** only — deleting would break the link |
+
+Cancelling sets `status: "cancelled"`, which the public queries already exclude from upcoming listings while keeping the record; it can be undone by setting the status back. Permanent deletion additionally requires typing the event's title, and the policy is re-checked inside the action against fresh data — the confirmation screen proves nothing, since the action can be POSTed directly. If Sanity refuses a delete because a reference appeared in the meantime, the officer is told to cancel instead. Anything the policy blocks can still be deleted deliberately in `/studio`.
+
+The rules live in `src/lib/events/delete-policy.ts` and are unit tested.
+
+### Drafts and publishing
+
+`/admin` writes **directly to published documents**. There is no draft state in the custom admin: saving an event makes it live.
+
+This is a deliberate V1 choice — the officer workflow is "schedule the thing and announce it", and a half-built draft system would be worse than none. Studio's full draft/publish workflow is unchanged and still available. The one consequence to know: **an event left as an unpublished draft in Studio does not appear in `/admin`** until it is published.
+
+### Dates and times
+
+Events are local to FGCU, so the codebase has exactly one timezone, defined once in `src/lib/time.ts`:
+
+- **Stored** in Sanity as UTC ISO-8601 instants (unchanged `datetime` fields).
+- **Entered and displayed** as `America/New_York` wall-clock time, labelled on the form.
+
+Conversion uses `Intl` only — no date library. Naive `new Date("2026-09-04T18:00")` parsing is never used anywhere: it resolves in the *server's* timezone, which would move a 6:00 PM event by hours (or onto another day) once deployed. `src/lib/time.test.ts` covers both DST states, the changeover weekend, and late-evening events that cross into the next UTC day.
+
+Anything needing a timezone must import `CLUB_TIME_ZONE` from that module rather than hard-coding one.
+
+### Caching
+
+Admin routes are `force-dynamic` — authorization depends on the request, so none of them may be prerendered. After a mutation, `revalidateEventContent()` in `actions.ts` invalidates `/admin` and everything under it in one call. That function is the single place to extend when the public event pages are built.
+
+### Known limitations
+
+- Portable Text, images, file uploads, SEO and related-resource links are Studio-only.
+- Officers and admins have identical content permissions; the `officers:manage` capability exists but nothing uses it yet.
+- No public event pages exist, so the admin has nothing to link "view on site" to.
+- Events index loads all events and filters in the page — correct at club scale (dozens per year), and worth revisiting only if that changes.
 
 ## Project status
 
 Phase 1 — foundation: architecture, environment validation, server-only boundaries, the Sanity content model, Studio structure, TypeGen and the GROQ query layer.
 
-Phase 2 — officer authentication: Clerk wiring, `/sign-in`, role-based authorization, the protected `/admin` shell, and one end-to-end Sanity write proof.
+Phase 2 — officer authentication: Clerk wiring, `/sign-in`, role-based authorization, and the protected `/admin` shell.
 
-Not built yet: the public UI (events, projects, resources, opportunities pages), admin CRUD, and the admin navigation shell.
+Phase 3 — admin shell and Events: the reusable admin application shell, a Sanity-backed dashboard, and the complete Events management vertical slice that later modules copy. The Phase 2 write-check diagnostic was removed here — real event mutations now prove the same path.
+
+Not built yet: the public UI (events, projects, resources, opportunities pages), and admin CRUD for every module other than Events.

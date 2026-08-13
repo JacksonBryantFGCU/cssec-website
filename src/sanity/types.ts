@@ -66,17 +66,6 @@ export type Seo = {
   };
 };
 
-export type AdminWriteCheck = {
-  _id: string;
-  _type: "adminWriteCheck";
-  _createdAt: string;
-  _updatedAt: string;
-  _rev: string;
-  lastCheckedAt?: string;
-  lastCheckedBy?: string;
-  note?: string;
-};
-
 export type PersonReference = {
   _ref: string;
   _type: "reference";
@@ -512,7 +501,6 @@ export type AllSanitySchemaTypes =
   | SocialLink
   | SanityImageAssetReference
   | Seo
-  | AdminWriteCheck
   | PersonReference
   | OfficerRole
   | Opportunity
@@ -537,20 +525,136 @@ export type AllSanitySchemaTypes =
   | Geopoint;
 
 // Source: src/sanity/queries/admin.ts
-// Variable: ADMIN_WRITE_CHECK_QUERY
-// Query: *[_id == "adminWriteCheck"][0]{    note,    lastCheckedAt,    lastCheckedBy  }
-export type ADMIN_WRITE_CHECK_QUERY_RESULT =
-  | {
-      note: null;
-      lastCheckedAt: null;
-      lastCheckedBy: null;
-    }
-  | {
-      note: string | null;
-      lastCheckedAt: string | null;
-      lastCheckedBy: string | null;
-    }
-  | null;
+// Variable: ADMIN_DASHBOARD_STATS_QUERY
+// Query: {  "upcomingEvents": count(*[_type == "event" && status == "scheduled"    && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())]),  "pastEvents": count(*[_type == "event"    && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]),  "activeProjects": count(*[_type == "project" && status in ["recruiting", "active", "testing"]]),  "recruitingProjects": count(*[_type == "project" && status == "recruiting"]),  "openOpportunities": count(*[_type == "opportunity"    && (!defined(deadline) || dateTime(deadline + "T23:59:59Z") >= dateTime(now()))]),  "publishedResources": count(*[_type == "resource"]),  "people": count(*[_type == "person"])}
+export type ADMIN_DASHBOARD_STATS_QUERY_RESULT = {
+  upcomingEvents: number;
+  pastEvents: number;
+  activeProjects: number;
+  recruitingProjects: number;
+  openOpportunities: number;
+  publishedResources: number;
+  people: number;
+};
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_UPCOMING_EVENTS_QUERY
+// Query: *[_type == "event" && status == "scheduled"    && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())]    | order(startsAt asc)[0...5]{      _id,      title,      startsAt,      endsAt,      eventType,      location    }
+export type ADMIN_UPCOMING_EVENTS_QUERY_RESULT = Array<{
+  _id: string;
+  title: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  eventType:
+    | "career"
+    | "hackathon"
+    | "meeting"
+    | "social"
+    | "speaker"
+    | "studySession"
+    | "workshop"
+    | null;
+  location: EventLocation | null;
+}>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_NEEDS_ATTENTION_QUERY
+// Query: {  "eventsMissingSummary": *[_type == "event" && status == "scheduled"    && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())    && !defined(summary)]{ _id, title, startsAt },  "eventsMissingLocation": *[_type == "event" && status == "scheduled"    && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())    && !defined(location.locationType)]{ _id, title, startsAt },  "eventsToClose": *[_type == "event" && status == "scheduled"    && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]    | order(startsAt desc)[0...5]{ _id, title, startsAt },  "opportunitiesClosingSoon": *[_type == "opportunity" && defined(deadline)    && dateTime(deadline + "T23:59:59Z") >= dateTime(now())    && dateTime(deadline + "T23:59:59Z") <= dateTime(now()) + 60 * 60 * 24 * 7]    | order(deadline asc){ _id, title, organization, deadline }}
+export type ADMIN_NEEDS_ATTENTION_QUERY_RESULT = {
+  eventsMissingSummary: Array<{
+    _id: string;
+    title: string | null;
+    startsAt: string | null;
+  }>;
+  eventsMissingLocation: Array<{
+    _id: string;
+    title: string | null;
+    startsAt: string | null;
+  }>;
+  eventsToClose: Array<{
+    _id: string;
+    title: string | null;
+    startsAt: string | null;
+  }>;
+  opportunitiesClosingSoon: Array<{
+    _id: string;
+    title: string | null;
+    organization: string | null;
+    deadline: string | null;
+  }>;
+};
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_EVENTS_QUERY
+// Query: *[_type == "event"] | order(startsAt desc){    _id,    title,    "slug": slug.current,    status,    eventType,    startsAt,    endsAt,    featured,    location,    "isPast": dateTime(coalesce(endsAt, startsAt)) < dateTime(now()),    "resourceCount": count(*[_type == "resource" && event._ref == ^._id]),    // count() on a missing array is null, so coalesce for a plain number.    "presenterCount": coalesce(count(presenters), 0)  }
+export type ADMIN_EVENTS_QUERY_RESULT = Array<{
+  _id: string;
+  title: string | null;
+  slug: string | null;
+  status: "cancelled" | "completed" | "scheduled" | null;
+  eventType:
+    | "career"
+    | "hackathon"
+    | "meeting"
+    | "social"
+    | "speaker"
+    | "studySession"
+    | "workshop"
+    | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  featured: boolean | null;
+  location: EventLocation | null;
+  isPast: boolean | null;
+  resourceCount: number;
+  presenterCount: number | 0;
+}>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_EVENT_BY_ID_QUERY
+// Query: *[_type == "event" && _id == $id][0]{    _id,    title,    "slug": slug.current,    status,    eventType,    startsAt,    endsAt,    location,    summary,    experienceLevel,    noExperienceRequired,    prerequisites,    topics,    registrationUrl,    communityUrl,    recap,    featured,    "presenterIds": presenters[]._ref,    "referenceCount": count(*[references(^._id)])  }
+export type ADMIN_EVENT_BY_ID_QUERY_RESULT = {
+  _id: string;
+  title: string | null;
+  slug: string | null;
+  status: "cancelled" | "completed" | "scheduled" | null;
+  eventType:
+    | "career"
+    | "hackathon"
+    | "meeting"
+    | "social"
+    | "speaker"
+    | "studySession"
+    | "workshop"
+    | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  location: EventLocation | null;
+  summary: string | null;
+  experienceLevel: "advanced" | "any" | "beginner" | "intermediate" | null;
+  noExperienceRequired: boolean | null;
+  prerequisites: Array<string> | null;
+  topics: Array<string> | null;
+  registrationUrl: string | null;
+  communityUrl: string | null;
+  recap: string | null;
+  featured: boolean | null;
+  presenterIds: Array<string> | null;
+  referenceCount: number;
+} | null;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: EVENT_SLUGS_IN_USE_QUERY
+// Query: *[_type == "event" && defined(slug.current) && _id != $excludeId].slug.current
+export type EVENT_SLUGS_IN_USE_QUERY_RESULT = Array<string | null>;
+
+// Source: src/sanity/queries/admin.ts
+// Variable: ADMIN_PEOPLE_OPTIONS_QUERY
+// Query: *[_type == "person"] | order(name asc){ _id, name }
+export type ADMIN_PEOPLE_OPTIONS_QUERY_RESULT = Array<{
+  _id: string;
+  name: string | null;
+}>;
 
 // Source: src/sanity/queries/events.ts
 // Variable: UPCOMING_EVENTS_QUERY
@@ -1426,7 +1530,13 @@ export type SITE_SETTINGS_QUERY_RESULT =
 import "@sanity/client";
 declare module "@sanity/client" {
   interface SanityQueries {
-    '\n  *[_id == "adminWriteCheck"][0]{\n    note,\n    lastCheckedAt,\n    lastCheckedBy\n  }\n': ADMIN_WRITE_CHECK_QUERY_RESULT;
+    '{\n  "upcomingEvents": count(*[_type == "event" && status == "scheduled"\n    && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())]),\n  "pastEvents": count(*[_type == "event"\n    && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]),\n  "activeProjects": count(*[_type == "project" && status in ["recruiting", "active", "testing"]]),\n  "recruitingProjects": count(*[_type == "project" && status == "recruiting"]),\n  "openOpportunities": count(*[_type == "opportunity"\n    && (!defined(deadline) || dateTime(deadline + "T23:59:59Z") >= dateTime(now()))]),\n  "publishedResources": count(*[_type == "resource"]),\n  "people": count(*[_type == "person"])\n}': ADMIN_DASHBOARD_STATS_QUERY_RESULT;
+    '\n  *[_type == "event" && status == "scheduled"\n    && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())]\n    | order(startsAt asc)[0...5]{\n      _id,\n      title,\n      startsAt,\n      endsAt,\n      eventType,\n      location\n    }\n': ADMIN_UPCOMING_EVENTS_QUERY_RESULT;
+    '{\n  "eventsMissingSummary": *[_type == "event" && status == "scheduled"\n    && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())\n    && !defined(summary)]{ _id, title, startsAt },\n  "eventsMissingLocation": *[_type == "event" && status == "scheduled"\n    && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())\n    && !defined(location.locationType)]{ _id, title, startsAt },\n  "eventsToClose": *[_type == "event" && status == "scheduled"\n    && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]\n    | order(startsAt desc)[0...5]{ _id, title, startsAt },\n  "opportunitiesClosingSoon": *[_type == "opportunity" && defined(deadline)\n    && dateTime(deadline + "T23:59:59Z") >= dateTime(now())\n    && dateTime(deadline + "T23:59:59Z") <= dateTime(now()) + 60 * 60 * 24 * 7]\n    | order(deadline asc){ _id, title, organization, deadline }\n}': ADMIN_NEEDS_ATTENTION_QUERY_RESULT;
+    '\n  *[_type == "event"] | order(startsAt desc){\n    _id,\n    title,\n    "slug": slug.current,\n    status,\n    eventType,\n    startsAt,\n    endsAt,\n    featured,\n    location,\n    "isPast": dateTime(coalesce(endsAt, startsAt)) < dateTime(now()),\n    "resourceCount": count(*[_type == "resource" && event._ref == ^._id]),\n    // count() on a missing array is null, so coalesce for a plain number.\n    "presenterCount": coalesce(count(presenters), 0)\n  }\n': ADMIN_EVENTS_QUERY_RESULT;
+    '\n  *[_type == "event" && _id == $id][0]{\n    _id,\n    title,\n    "slug": slug.current,\n    status,\n    eventType,\n    startsAt,\n    endsAt,\n    location,\n    summary,\n    experienceLevel,\n    noExperienceRequired,\n    prerequisites,\n    topics,\n    registrationUrl,\n    communityUrl,\n    recap,\n    featured,\n    "presenterIds": presenters[]._ref,\n    "referenceCount": count(*[references(^._id)])\n  }\n': ADMIN_EVENT_BY_ID_QUERY_RESULT;
+    '\n  *[_type == "event" && defined(slug.current) && _id != $excludeId].slug.current\n': EVENT_SLUGS_IN_USE_QUERY_RESULT;
+    '\n  *[_type == "person"] | order(name asc){ _id, name }\n': ADMIN_PEOPLE_OPTIONS_QUERY_RESULT;
     '\n  *[_type == "event" && status != "cancelled" && dateTime(coalesce(endsAt, startsAt)) >= dateTime(now())]\n    | order(startsAt asc){\n      \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n      presenters[]->{ _id, name }\n    }\n': UPCOMING_EVENTS_QUERY_RESULT;
     '\n  *[_type == "event" && dateTime(coalesce(endsAt, startsAt)) < dateTime(now())]\n    | order(startsAt desc){\n      \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n      presenters[]->{ _id, name }\n    }\n': PAST_EVENTS_QUERY_RESULT;
     '\n  *[_type == "event" && slug.current == $slug][0]{\n    \n  _id,\n  title,\n  "slug": slug.current,\n  status,\n  eventType,\n  startsAt,\n  endsAt,\n  summary,\n  featured,\n  experienceLevel,\n  noExperienceRequired,\n  location\n,\n    description,\n    prerequisites,\n    setupInstructions,\n    topics,\n    registrationUrl,\n    communityUrl,\n    recap,\n    presenters[]->{ \n  _id,\n  name,\n  "slug": slug.current,\n  photo { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n },\n  shortBio,\n  githubUrl,\n  linkedinUrl,\n  websiteUrl\n },\n    // Materials created for this event, plus anything explicitly highlighted.\n    "resources": array::unique([\n      ...*[_type == "resource" && event._ref == ^._id]{ \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n },\n      ...relatedResources[]->{ \n  _id,\n  title,\n  "slug": slug.current,\n  resourceType,\n  description,\n  topics,\n  experienceLevel,\n  featured,\n  externalUrl,\n  githubUrl,\n  "fileUrl": file.asset->url,\n  publishedAt\n }\n    ]),\n    seo { \n  metaTitle,\n  metaDescription,\n  shareImage { \n  asset->{ _id, url, metadata { lqip, dimensions } },\n  alt,\n  hotspot,\n  crop\n }\n }\n  }\n': EVENT_BY_SLUG_QUERY_RESULT;
