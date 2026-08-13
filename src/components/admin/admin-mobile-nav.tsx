@@ -1,9 +1,8 @@
 'use client'
 
 import { Menu, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
-
-import { Button } from '@/components/ui/button'
+import { usePathname } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
 
 import { AdminNav } from './admin-nav'
 import type { AdminNavSection } from './navigation'
@@ -24,39 +23,48 @@ export function AdminMobileNav({
   /** Officer identity and sign-out, shown at the bottom of the open panel. */
   children?: React.ReactNode
 }) {
-  const [open, setOpen] = useState(false)
+  const pathname = usePathname()
+
+  // Openness is stored as *which route it was opened on*, so a navigation
+  // closes the panel by making this stale — including a back-button
+  // navigation, which fires no click. Deriving it during render avoids an
+  // effect that would only exist to undo state React can already compute.
+  const [openedAt, setOpenedAt] = useState<string | null>(null)
+  const open = openedAt === pathname
+
+  const close = useCallback(() => setOpenedAt(null), [])
 
   useEffect(() => {
     if (!open) return
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape') close()
     }
 
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open])
+  }, [close, open])
 
   return (
     <div className="lg:hidden">
-      <Button
+      <button
         aria-controls="admin-mobile-nav"
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        size="icon"
-        variant="outline"
+        className="border-navy-border text-navy-fg hover:border-navy-border-hover hover:text-navy-bright grid size-11 place-items-center rounded-md border transition-colors"
+        onClick={() => setOpenedAt(open ? null : pathname)}
+        type="button"
       >
-        {open ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+        {open ? <X aria-hidden="true" className="size-5" /> : <Menu aria-hidden="true" className="size-5" />}
         <span className="sr-only">{open ? 'Close menu' : 'Open menu'}</span>
-      </Button>
+      </button>
 
       <div
-        className="bg-background absolute inset-x-0 top-14 z-20 border-b p-4 shadow-sm data-[closed]:hidden"
+        className="bg-navy-deep border-navy-line absolute inset-x-0 top-14 z-20 max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-b px-3 py-4 shadow-lg data-[closed]:hidden"
         data-closed={open ? undefined : ''}
         id="admin-mobile-nav"
       >
-        <AdminNav onNavigate={() => setOpen(false)} sections={sections} />
-        {children ? <div className="mt-6 border-t pt-4">{children}</div> : null}
+        <AdminNav onNavigate={close} sections={sections} />
+        {children ? <div className="border-navy-line mt-5 border-t pt-4">{children}</div> : null}
       </div>
     </div>
   )

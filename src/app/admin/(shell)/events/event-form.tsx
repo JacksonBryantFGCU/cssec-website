@@ -83,14 +83,19 @@ export function EventForm({
   const selectedPresenters = list('presenters')
 
   return (
-    <form action={formAction} className="flex max-w-3xl flex-col gap-8 px-6 py-6" noValidate>
+    <form
+      action={formAction}
+      className="flex max-w-3xl flex-col gap-5 px-4 py-6 sm:px-6"
+      noValidate
+    >
       {eventId ? <input name="id" type="hidden" value={eventId} /> : null}
 
       {state.status === 'error' && state.message ? (
         <p
-          className="border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-4 py-3 text-sm font-medium"
+          className="border-destructive/30 bg-destructive/5 text-destructive flex items-start gap-2 rounded-md border px-4 py-3 text-[13.5px] font-semibold"
           role="alert"
         >
+          <span aria-hidden="true">✕</span>
           {state.message}
         </p>
       ) : null}
@@ -304,21 +309,24 @@ export function EventForm({
           />
         </FormField>
 
-        <div>
-          <p className="mb-2 text-sm font-medium" id="presenters-label">
+        <div className="flex flex-col gap-1.5">
+          <p className="text-ink text-[13px] font-semibold" id="presenters-label">
             Presenters
           </p>
           {people.length === 0 ? (
-            <p className="text-muted-foreground text-xs">
+            <p className="text-ink-faint text-[12px] leading-snug">
               No people have been added yet. Add them in the Advanced CMS, then select them here.
             </p>
           ) : (
-            <ul aria-labelledby="presenters-label" className="flex flex-col gap-1">
+            <ul
+              aria-labelledby="presenters-label"
+              className="border-rule divide-rule bg-paper-warm divide-y rounded-md border"
+            >
               {people.map((person) => (
                 <li key={person._id}>
-                  <label className="flex min-h-11 items-center gap-3 text-sm">
+                  <label className="text-ink flex min-h-11 items-center gap-3 px-3 text-[13.5px]">
                     <input
-                      className="accent-primary size-5"
+                      className="accent-club-green size-[18px]"
                       defaultChecked={selectedPresenters.includes(person._id)}
                       name="presenters"
                       type="checkbox"
@@ -382,21 +390,29 @@ export function EventForm({
         </FormField>
       </FieldSet>
 
-      <p className="text-muted-foreground text-xs">
+      <p className="text-ink-faint text-[12px] leading-relaxed">
         Full descriptions, setup instructions and SEO are edited in the{' '}
-        <Link className="underline underline-offset-4" href="/studio" rel="noreferrer" target="_blank">
+        <Link
+          className="text-club-link font-medium underline underline-offset-4"
+          href="/studio"
+          rel="noreferrer"
+          target="_blank"
+        >
           Advanced CMS
         </Link>
         . Saving here leaves them untouched.
       </p>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="border-rule-card flex flex-wrap items-center gap-3 border-t pt-4">
         <Button disabled={isPending} type="submit">
           {isPending ? 'Saving…' : submitLabel}
         </Button>
         <Link className={cn(buttonVariants({ variant: 'ghost' }))} href={cancelHref}>
           Cancel
         </Link>
+        <span className="text-ink-faint ml-auto font-mono text-[11px]">
+          Times are {CLUB_TIME_ZONE_LABEL}
+        </span>
       </div>
     </form>
   )

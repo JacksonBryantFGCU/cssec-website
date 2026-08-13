@@ -1,8 +1,10 @@
+import { Briefcase, CalendarDays, FolderGit2, Library } from 'lucide-react'
 import Link from 'next/link'
 
 import { requireOfficer } from '@/auth/require-officer'
-import { AdminPageHeader } from '@/components/admin/admin-page-header'
+import { AdminPageHeader, AdminSection } from '@/components/admin/admin-page-header'
 import { AdminStat } from '@/components/admin/admin-stat'
+import { AdvancedCmsCard } from '@/components/admin/advanced-cms'
 import { EmptyState } from '@/components/admin/empty-state'
 import { MetaBadge } from '@/components/admin/status-badge'
 import { buttonVariants } from '@/components/ui/button'
@@ -80,41 +82,48 @@ export default async function AdminDashboardPage() {
           </Link>
         }
         description="Everything below is live content from Sanity."
+        kicker="Overview"
         title="Dashboard"
       />
 
-      <div className="flex flex-col gap-10 px-6 py-6">
-        <section aria-labelledby="stats-heading" className="flex flex-col gap-3">
-          <h2 className="text-lg font-medium" id="stats-heading">
-            At a glance
-          </h2>
+      <div className="flex flex-col gap-8 px-4 py-6 sm:px-6">
+        <AdminSection id="stats" title="At a glance">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <AdminStat
               hint={`${stats.pastEvents} in the archive`}
               href="/admin/events"
+              icon={CalendarDays}
               label="Upcoming events"
               value={stats.upcomingEvents}
             />
             <AdminStat
               hint={`${stats.recruitingProjects} recruiting`}
+              icon={FolderGit2}
               label="Active projects"
               value={stats.activeProjects}
             />
-            <AdminStat label="Open opportunities" value={stats.openOpportunities} />
-            <AdminStat hint={`${stats.people} people`} label="Resources" value={stats.publishedResources} />
+            <AdminStat icon={Briefcase} label="Open opportunities" value={stats.openOpportunities} />
+            <AdminStat
+              hint={`${stats.people} people`}
+              icon={Library}
+              label="Resources"
+              value={stats.publishedResources}
+            />
           </div>
-        </section>
+        </AdminSection>
 
-        <section aria-labelledby="upcoming-heading" className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-medium" id="upcoming-heading">
-              Upcoming events
-            </h2>
-            <Link className="text-sm underline underline-offset-4" href="/admin/events">
-              All events
+        <AdminSection
+          action={
+            <Link
+              className="text-club-link hover:text-club-link-hover text-[13px] font-semibold hover:underline"
+              href="/admin/events"
+            >
+              All events →
             </Link>
-          </div>
-
+          }
+          id="upcoming"
+          title="Upcoming events"
+        >
           {upcoming.length === 0 ? (
             <EmptyState
               action={
@@ -123,20 +132,24 @@ export default async function AdminDashboardPage() {
                 </Link>
               }
               description="Once an event is scheduled it will show up here and on the public site."
-              title="Nothing scheduled yet."
+              kicker="Nothing scheduled"
+              title="No events on the calendar"
             />
           ) : (
-            <ul className="divide-y rounded-lg border">
+            <ul className="border-rule-card divide-rule divide-y rounded-lg border bg-white">
               {upcoming.map((event) => (
-                <li key={event._id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-                  <div className="flex min-w-0 flex-col gap-1">
+                <li
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5"
+                  key={event._id}
+                >
+                  <div className="flex min-w-0 flex-col gap-0.5">
                     <Link
-                      className="font-medium underline-offset-4 hover:underline"
+                      className="text-ink text-[14.5px] font-semibold underline-offset-4 hover:underline"
                       href={`/admin/events/${event._id}/edit`}
                     >
                       {event.title ?? 'Untitled event'}
                     </Link>
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-ink-faint font-mono text-[11.5px]">
                       {formatClubDateTime(event.startsAt)}
                       {event.location?.place ? ` · ${event.location.place}` : ''}
                     </p>
@@ -146,36 +159,49 @@ export default async function AdminDashboardPage() {
               ))}
             </ul>
           )}
-        </section>
+        </AdminSection>
 
-        <section aria-labelledby="attention-heading" className="flex flex-col gap-3">
-          <h2 className="text-lg font-medium" id="attention-heading">
-            Needs attention
-          </h2>
-
+        <AdminSection id="attention" title="Needs attention">
           {needsAttention.length === 0 ? (
-            <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
+            <p className="border-rule-dashed bg-paper-warm text-ink-soft rounded-lg border border-dashed px-4 py-5 text-center text-[13px]">
+              <span aria-hidden="true" className="text-club-link">
+                ✓
+              </span>{' '}
               Nothing needs attention right now.
             </p>
           ) : (
-            <ul className="divide-y rounded-lg border">
+            <ul className="border-rule-card divide-rule divide-y rounded-lg border bg-white">
               {needsAttention.map((item) => (
-                <li key={item.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-                  <div className="flex min-w-0 flex-col">
-                    <span className="font-medium">{item.label}</span>
-                    <span className="text-muted-foreground text-sm">{item.detail}</span>
+                <li
+                  className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5"
+                  key={item.id}
+                >
+                  <div className="flex min-w-0 gap-2.5">
+                    {/* Words carry the meaning; the mark is decoration. */}
+                    <span aria-hidden="true" className="text-urgent mt-px font-mono text-[13px]">
+                      !
+                    </span>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-ink text-[14.5px] font-semibold">{item.label}</span>
+                      <span className="text-ink-soft text-[12.5px]">{item.detail}</span>
+                    </div>
                   </div>
                   <Link
                     className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
                     href={item.href}
                   >
-                    Fix
+                    Fix<span className="sr-only"> — {item.label}</span>
                   </Link>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </AdminSection>
+
+        <AdvancedCmsCard>
+          Projects, resources, people and site settings are edited in Sanity Studio until their
+          screens land here.
+        </AdvancedCmsCard>
       </div>
     </>
   )

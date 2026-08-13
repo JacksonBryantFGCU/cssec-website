@@ -41,20 +41,23 @@ export default async function RemoveEventPage({ params }: { params: Promise<{ id
     <>
       <AdminPageHeader
         description="Cancelling keeps the record. Deleting does not."
+        kicker="Events"
         title="Remove event"
       />
 
-      <div className="flex max-w-2xl flex-col gap-6 px-6 py-6">
-        <section className="flex flex-col gap-2 rounded-lg border p-4">
+      <div className="flex max-w-2xl flex-col gap-5 px-4 py-6 sm:px-6">
+        <section className="border-rule-card flex flex-col gap-2 rounded-lg border bg-white p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-medium">{event.title ?? 'Untitled event'}</h2>
+            <h2 className="text-ink text-[15px] font-semibold">{event.title ?? 'Untitled event'}</h2>
             <StatusBadge status={event.status} />
           </div>
-          <p className="text-muted-foreground text-sm">{formatClubDateTime(event.startsAt)}</p>
+          <p className="text-ink-soft font-mono text-[11.5px]">
+            {formatClubDateTime(event.startsAt)}
+          </p>
           {event.referenceCount > 0 ? (
-            <p className="text-muted-foreground text-sm">
-              {event.referenceCount} other {event.referenceCount === 1 ? 'document links' : 'documents link'}{' '}
-              to this event.
+            <p className="text-ink-body text-[13px]">
+              {event.referenceCount} other{' '}
+              {event.referenceCount === 1 ? 'document links' : 'documents link'} to this event.
             </p>
           ) : null}
         </section>

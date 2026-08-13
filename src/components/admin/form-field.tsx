@@ -10,10 +10,14 @@ import { cn } from '@/lib/utils'
  * these forms keep working before JavaScript loads.
  */
 
+// `border-input` rather than `border`: control edges carry meaning, so they use
+// the stronger token that clears 3:1 against white. The hairline `--border` is
+// for rules between rows.
 const controlClasses =
-  'w-full min-h-11 rounded-md border bg-background px-3 py-2 text-sm shadow-xs transition-colors ' +
-  'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none ' +
-  'aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-destructive/20 disabled:opacity-50'
+  'w-full min-h-11 rounded-md border border-input bg-background px-3 py-2 text-sm text-ink transition-colors ' +
+  'hover:border-ink-faint focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none ' +
+  'aria-[invalid=true]:border-destructive aria-[invalid=true]:ring-3 aria-[invalid=true]:ring-destructive/15 ' +
+  'disabled:cursor-not-allowed disabled:opacity-50'
 
 export function FormField({
   children,
@@ -32,10 +36,10 @@ export function FormField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-medium" htmlFor={htmlFor}>
+      <label className="text-ink text-[13px] font-semibold" htmlFor={htmlFor}>
         {label}
         {required ? (
-          <span aria-hidden="true" className="text-muted-foreground">
+          <span aria-hidden="true" className="text-club-link">
             {' '}
             *
           </span>
@@ -43,7 +47,7 @@ export function FormField({
         {required ? <span className="sr-only"> (required)</span> : null}
       </label>
       {description ? (
-        <p className="text-muted-foreground text-xs" id={`${htmlFor}-description`}>
+        <p className="text-ink-faint text-[12px] leading-snug" id={`${htmlFor}-description`}>
           {description}
         </p>
       ) : null}
@@ -63,7 +67,8 @@ export function FieldError({ error, id }: { error?: string; id: string }) {
   if (!error) return null
 
   return (
-    <p className="text-destructive text-xs font-medium" id={id} role="alert">
+    <p className="text-destructive flex items-start gap-1 text-xs font-semibold" id={id} role="alert">
+      <span aria-hidden="true">✕</span>
       {error}
     </p>
   )
@@ -106,21 +111,21 @@ export function CheckboxField({
   name: string
 }) {
   return (
-    <div className="flex items-start gap-3 py-1">
+    <div className="border-rule bg-paper-warm flex items-start gap-3 rounded-md border p-3">
       <input
         aria-describedby={description ? `${id}-description` : undefined}
-        className="accent-primary mt-0.5 size-5"
+        className="accent-club-green mt-px size-[18px] shrink-0"
         defaultChecked={defaultChecked}
         id={id}
         name={name}
         type="checkbox"
       />
       <div className="flex flex-col gap-0.5">
-        <label className="text-sm font-medium" htmlFor={id}>
+        <label className="text-ink text-[13px] font-semibold" htmlFor={id}>
           {label}
         </label>
         {description ? (
-          <p className="text-muted-foreground text-xs" id={`${id}-description`}>
+          <p className="text-ink-faint text-[12px] leading-snug" id={`${id}-description`}>
             {description}
           </p>
         ) : null}
@@ -142,9 +147,18 @@ export function FieldSet({
   legend: string
 }) {
   return (
-    <fieldset className={cn('flex flex-col gap-3 rounded-lg border p-4', className)}>
-      <legend className="px-1 text-sm font-medium">{legend}</legend>
-      {description ? <p className="text-muted-foreground -mt-1 text-xs">{description}</p> : null}
+    <fieldset
+      className={cn(
+        'border-rule-card flex flex-col gap-4 rounded-lg border bg-white p-4 sm:p-5',
+        className,
+      )}
+    >
+      <legend className="text-ink-label -ml-1 px-1 font-mono text-[10.5px] tracking-[0.16em] uppercase">
+        {legend}
+      </legend>
+      {description ? (
+        <p className="text-ink-faint -mt-2 text-[12px] leading-snug">{description}</p>
+      ) : null}
       {children}
     </fieldset>
   )

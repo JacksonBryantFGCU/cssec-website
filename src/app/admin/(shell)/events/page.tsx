@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { requireOfficer } from '@/auth/require-officer'
 import { AdminPageHeader } from '@/components/admin/admin-page-header'
 import { EmptyState } from '@/components/admin/empty-state'
-import { MetaBadge, StatusBadge } from '@/components/admin/status-badge'
+import { FeaturedBadge, MetaBadge, StatusBadge } from '@/components/admin/status-badge'
 import { buttonVariants } from '@/components/ui/button'
 import { formatClubDateTime } from '@/lib/time'
 import { cn } from '@/lib/utils'
@@ -69,39 +69,55 @@ export default async function AdminEventsPage({
           </Link>
         }
         description="Workshops, meetings and everything else on the club calendar."
+        kicker="Content"
         title="Events"
       />
 
-      <div className="flex flex-col gap-4 px-6 py-6">
+      <div className="flex flex-col gap-4 px-4 py-6 sm:px-6">
         {saved ? (
           <p
-            className="bg-secondary text-secondary-foreground rounded-md px-4 py-3 text-sm font-medium"
+            className="border-club-border bg-club-surface text-club-dark flex items-start gap-2 rounded-md border px-4 py-3 text-[13.5px] font-medium"
             role="status"
           >
-            {saved}
-            {savedTitle ? ` — “${savedTitle}”` : ''}
+            <span aria-hidden="true">✓</span>
+            <span>
+              {saved}
+              {savedTitle ? ` — “${savedTitle}”` : ''}
+            </span>
           </p>
         ) : null}
 
-        <nav aria-label="Filter events" className="flex flex-wrap gap-2">
-          {FILTERS.map((option) => {
-            const active = option.value === filter
+        <nav aria-label="Filter events">
+          <ul className="border-rule-card inline-flex flex-wrap gap-1 rounded-lg border bg-white p-1">
+            {FILTERS.map((option) => {
+              const active = option.value === filter
 
-            return (
-              <Link
-                aria-current={active ? 'true' : undefined}
-                className={cn(
-                  buttonVariants({ variant: active ? 'secondary' : 'ghost', size: 'sm' }),
-                  'gap-1.5',
-                )}
-                href={`/admin/events?filter=${option.value}`}
-                key={option.value}
-              >
-                {option.label}
-                <span className="text-muted-foreground tabular-nums">{counts[option.value]}</span>
-              </Link>
-            )
-          })}
+              return (
+                <li key={option.value}>
+                  <Link
+                    aria-current={active ? 'true' : undefined}
+                    className={cn(
+                      'flex min-h-9 items-center gap-1.5 rounded-md px-3 text-[13px] font-semibold transition-colors',
+                      active
+                        ? 'bg-club-surface text-club-dark'
+                        : 'text-ink-soft hover:bg-rule-fill hover:text-ink',
+                    )}
+                    href={`/admin/events?filter=${option.value}`}
+                  >
+                    {option.label}
+                    <span
+                      className={cn(
+                        'font-mono text-[11px] tabular-nums',
+                        active ? 'text-club-link' : 'text-ink-label',
+                      )}
+                    >
+                      {counts[option.value]}
+                    </span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
         </nav>
 
         {events.length === 0 ? (
@@ -112,7 +128,8 @@ export default async function AdminEventsPage({
               </Link>
             }
             description="Events created here appear on the club calendar and in the Advanced CMS."
-            title="No events yet."
+            kicker="Nothing yet"
+            title="No events yet"
           />
         ) : visible.length === 0 ? (
           <EmptyState
@@ -121,25 +138,29 @@ export default async function AdminEventsPage({
                 ? 'Nothing is scheduled. Past events are still available under the Past filter.'
                 : 'Nothing here yet.'
             }
-            title={filter === 'upcoming' ? 'No upcoming events.' : 'No past events.'}
+            kicker="Empty filter"
+            title={filter === 'upcoming' ? 'No upcoming events' : 'No past events'}
           />
         ) : (
-          <ul className="divide-y rounded-lg border">
+          <ul className="border-rule-card divide-rule divide-y rounded-lg border bg-white">
             {visible.map((event) => (
-              <li className="flex flex-wrap items-start justify-between gap-4 p-4" key={event._id}>
+              <li
+                className="hover:bg-paper-warm flex flex-col gap-3 px-4 py-4 transition-colors sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+                key={event._id}
+              >
                 <div className="flex min-w-0 flex-col gap-1.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
-                      className="font-medium underline-offset-4 hover:underline"
+                      className="text-ink text-[15px] font-semibold underline-offset-4 hover:underline"
                       href={`/admin/events/${event._id}/edit`}
                     >
                       {event.title ?? 'Untitled event'}
                     </Link>
                     <StatusBadge status={event.status} />
-                    {event.featured ? <MetaBadge>Featured</MetaBadge> : null}
+                    {event.featured ? <FeaturedBadge /> : null}
                   </div>
 
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-ink-soft font-mono text-[11.5px]">
                     {formatClubDateTime(event.startsAt)}
                     {event.location?.place ? ` · ${event.location.place}` : ''}
                     {event.location?.locationType && event.location.locationType !== 'inPerson'
@@ -147,7 +168,7 @@ export default async function AdminEventsPage({
                       : ''}
                   </p>
 
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <MetaBadge>{titleForValue(EVENT_TYPES, event.eventType) ?? 'Event'}</MetaBadge>
                     {event.resourceCount > 0 ? (
                       <MetaBadge>
@@ -163,7 +184,19 @@ export default async function AdminEventsPage({
                   </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  {/* Cancelled events 404 publicly, so they get no view link. */}
+                  {event.slug && event.status !== 'cancelled' ? (
+                    <a
+                      className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }))}
+                      href={`/events/${event.slug}`}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      View<span className="sr-only"> {event.title ?? 'event'} on the website</span>
+                      <span aria-hidden="true">↗</span>
+                    </a>
+                  ) : null}
                   <Link
                     className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
                     href={`/admin/events/${event._id}/edit`}
@@ -182,10 +215,15 @@ export default async function AdminEventsPage({
           </ul>
         )}
 
-        <p className="text-muted-foreground text-xs">
-          Public event pages are not built yet, so there is nothing to preview from here. Events are
-          already live in the{' '}
-          <Link className="underline underline-offset-4" href="/studio" rel="noreferrer" target="_blank">
+        <p className="text-ink-faint text-[12px]">
+          Saving here updates the public site straight away. Descriptions, setup instructions and
+          SEO live in the{' '}
+          <Link
+            className="text-club-link font-medium underline underline-offset-4"
+            href="/studio"
+            rel="noreferrer"
+            target="_blank"
+          >
             Advanced CMS
           </Link>
           .
